@@ -372,10 +372,6 @@ export function getInjectionScript(): () => void {
     }, true)
 
     document.addEventListener('keydown', async (e) => {
-      if ((e.metaKey || e.ctrlKey) && e.shiftKey) {
-        console.log('[Dodo Recorder] Cmd/Ctrl+Shift pressed, key:', e.key)
-      }
-
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 's') {
         // Block screenshot shortcut while paused
         if (isRecordingPaused()) {
@@ -402,7 +398,8 @@ export function getInjectionScript(): () => void {
               type: 'screenshot',
               screenshot: screenshotPath,
             })
-            console.log('[Dodo Recorder] Recording action:', actionData)
+            // Truncate path in log to avoid leaking full filesystem structure
+            console.log('[Dodo Recorder] Recording screenshot action (path truncated):', screenshotPath.slice(-40))
             recordAction(actionData)
             console.log('[Dodo Recorder] ✅ Screenshot action recorded successfully')
           } else {

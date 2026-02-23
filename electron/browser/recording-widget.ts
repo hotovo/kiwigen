@@ -20,6 +20,7 @@ export function getWidgetScript(): () => void {
     const WIDGET_HOST_ID = '__dodo-recorder-widget-host'
     
     // Window interface for injected functions
+    // NOTE: Keep in sync with shared/browser-context.ts (cannot import at runtime)
     interface DodoWindow extends Window {
       __dodoRecordAction: (data: string) => void
       __dodoTakeScreenshot: () => Promise<string | null>
@@ -27,8 +28,10 @@ export function getWidgetScript(): () => void {
       __dodoDisableAssertionMode: () => void
       __dodoAudioActive: boolean
       __dodoRecordingPaused?: boolean
-      __dodoPauseRecording?: () => Promise<void>
-      __dodoResumeRecording?: () => Promise<void>
+      /** Session token injected by recorder.ts — must be passed to pause/resume. */
+      __dodoSessionToken?: string
+      __dodoPauseRecording?: (token: string) => Promise<void>
+      __dodoResumeRecording?: (token: string) => Promise<void>
       __dodoCreateHighlighter?: () => void
     }
 
@@ -419,12 +422,13 @@ export function getWidgetScript(): () => void {
 
       const win = window as unknown as DodoWindow
       const isPaused = win.__dodoRecordingPaused === true
+      const sessionToken = win.__dodoSessionToken ?? ''
 
       try {
         if (isPaused) {
           // Resume
           if (typeof win.__dodoResumeRecording === 'function') {
-            await win.__dodoResumeRecording()
+            await win.__dodoResumeRecording(sessionToken)
             console.log('[Dodo Widget] Recording resumed')
             pauseResumeBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <rect x="6" y="4" width="4" height="16" fill="rgba(100, 116, 139, 0.8)" stroke="rgba(148, 163, 184, 0.9)"></rect>
@@ -444,7 +448,7 @@ export function getWidgetScript(): () => void {
         } else {
           // Pause
           if (typeof win.__dodoPauseRecording === 'function') {
-            await win.__dodoPauseRecording()
+            await win.__dodoPauseRecording(sessionToken)
             console.log('[Dodo Widget] Recording paused')
             pauseResumeBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <polygon points="5 3 19 12 5 21 5 3" fill="rgba(100, 116, 139, 0.8)" stroke="rgba(148, 163, 184, 0.9)"></polygon>

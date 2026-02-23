@@ -44,8 +44,8 @@ function getBuildInfo(): Record<string, string | boolean> | null {
       const content = fs.readFileSync(buildInfoPath, 'utf-8')
       return JSON.parse(content)
     }
-  } catch (e) {
-    logger.warn('Failed to read build info:', e)
+  } catch (error) {
+    logger.warn('Failed to read build info:', error instanceof Error ? error.message : String(error))
   }
   return null
 }

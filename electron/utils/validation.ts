@@ -4,13 +4,14 @@ import fs from 'fs'
 import { app } from 'electron'
 import type { AppSettings } from '../settings/store'
 import type { RecordedAction, TranscriptSegment, SessionBundle } from '../../shared/types'
-
-const ALLOWED_PROTOCOLS = ['http:', 'https:']
-const SESSION_ID_REGEX = /^[a-zA-Z0-9_-]+$/
-const MAX_AUDIO_SIZE = 50 * 1024 * 1024 // 50MB limit
-const MAX_URL_LENGTH = 2048
-const MAX_PATH_LENGTH = 4096
-const MAX_TIMEOUT_MS = 600000 // 10 minutes
+import {
+  ALLOWED_PROTOCOLS,
+  SESSION_ID_REGEX,
+  MAX_AUDIO_SIZE,
+  MAX_URL_LENGTH,
+  MAX_PATH_LENGTH,
+  MAX_TIMEOUT_MS,
+} from '../../shared/constants'
 
 export function validateUrl(url: string): { valid: boolean; error?: string } {
   if (!url || typeof url !== 'string') {
@@ -19,7 +20,7 @@ export function validateUrl(url: string): { valid: boolean; error?: string } {
 
   try {
     const parsed = new URL(url)
-    if (!ALLOWED_PROTOCOLS.includes(parsed.protocol)) {
+    if (!(ALLOWED_PROTOCOLS as readonly string[]).includes(parsed.protocol)) {
       return { valid: false, error: `Protocol ${parsed.protocol} is not allowed. Use http: or https:` }
     }
     return { valid: true }

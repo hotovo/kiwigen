@@ -3,10 +3,11 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogFooter } from '@/components/ui/dialog'
 import { useSettings } from '@/lib/useSettings'
 import { Play, Square, Save, Loader2, Mic, MicOff, RotateCcw, CheckCircle } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import type { RecordedAction, SessionBundle } from '@/types/session'
+import type { RecordedAction, SessionBundle, TranscriptSegment } from '@/types/session'
 import { buildNarrativeWithSentenceLevelDistribution } from '../../shared/narrativeBuilder'
+import { useAudioRecorder } from '@/hooks/useAudioRecorder'
 
 export function RecordingControls() {
   const {
@@ -14,7 +15,7 @@ export function RecordingControls() {
     audioStatus, audioChunksCount, audioError, startTime, sessionSaved, selectedMicrophoneId,
     pausedAt, pausedDurationMs,
     setStatus, setStartTime, addAction, setTranscriptSegments, setTranscriptText, reset,
-    setAudioStatus, incrementAudioChunks, setAudioError, setSessionSaved, setSelectedMicrophoneId,
+    setAudioStatus, setAudioError, setSessionSaved,
     setPausedAt, setPausedDuration
   } = useRecordingStore(useShallow((state) => ({
     status: state.status,
@@ -38,19 +39,14 @@ export function RecordingControls() {
     setTranscriptText: state.setTranscriptText,
     reset: state.reset,
     setAudioStatus: state.setAudioStatus,
-    incrementAudioChunks: state.incrementAudioChunks,
     setAudioError: state.setAudioError,
     setSessionSaved: state.setSessionSaved,
-    setSelectedMicrophoneId: state.setSelectedMicrophoneId,
     setPausedAt: state.setPausedAt,
     setPausedDuration: state.setPausedDuration,
   })))
 
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
-  const audioChunksRef = useRef<Blob[]>([])
-  const audioStreamRef = useRef<MediaStream | null>(null)
-  const audioContextRef = useRef<AudioContext | null>(null)
-  const analyserRef = useRef<AnalyserNode | null>(null)
+  const { startAudio, stopAudio, pauseAudio, resumeAudio } = useAudioRecorder()
+
   const [showResetWarning, setShowResetWarning] = useState(false)
 
   // Use shared settings hook to reload preferences during reset
@@ -70,15 +66,11 @@ export function RecordingControls() {
     const unsubscribe = window.electronAPI.onRecordingStateChanged((data) => {
       console.log('🔔 Recording state changed from widget:', data.status)
       setStatus(data.status)
-      
+
       if (data.status === 'paused') {
         setPausedAt(Date.now())
-        // Pause audio recording
-        if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-          mediaRecorderRef.current.pause()
-          console.log('🎤 Audio recording paused')
-        }
-        setAudioActive(false)
+        pauseAudio()
+        if (window.electronAPI) void window.electronAPI.updateAudioActivity(false)
       } else if (data.status === 'recording') {
         // Accumulate paused duration
         if (pausedAt) {
@@ -86,40 +78,14 @@ export function RecordingControls() {
           setPausedDuration(newDuration)
           setPausedAt(null)
         }
-        // Resume audio recording
-        if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'paused') {
-          mediaRecorderRef.current.resume()
-          console.log('🎤 Audio recording resumed')
-        }
-        if (isVoiceEnabled) {
-          setAudioActive(true)
+        resumeAudio()
+        if (isVoiceEnabled && window.electronAPI) {
+          void window.electronAPI.updateAudioActivity(true)
         }
       }
     })
     return unsubscribe
-  }, [setStatus, setPausedAt, setPausedDuration, pausedAt, pausedDurationMs, isVoiceEnabled])
-
-  const cleanupAudioMonitoring = () => {
-    if (audioContextRef.current) {
-      void audioContextRef.current.close()
-      audioContextRef.current = null
-    }
-
-    if (analyserRef.current) {
-      analyserRef.current.disconnect()
-      analyserRef.current = null
-    }
-
-    if (window.electronAPI) {
-      void window.electronAPI.updateAudioActivity(false)
-    }
-  }
-
-  const setAudioActive = (active: boolean) => {
-    if (window.electronAPI) {
-      void window.electronAPI.updateAudioActivity(active)
-    }
-  }
+  }, [setStatus, setPausedAt, setPausedDuration, pausedAt, pausedDurationMs, isVoiceEnabled, pauseAudio, resumeAudio])
 
   const canStart = startUrl && outputPath && status === 'idle'
   const canStop = status === 'recording' || status === 'paused'
@@ -133,7 +99,7 @@ export function RecordingControls() {
     console.log('  status:', status)
     console.log('  isVoiceEnabled:', isVoiceEnabled)
     console.log('  window.electronAPI:', !!window.electronAPI)
-    
+
     if (!canStart || !window.electronAPI) {
       console.error('❌ Cannot start recording - preconditions not met')
       console.error('  canStart:', canStart)
@@ -141,7 +107,6 @@ export function RecordingControls() {
       return
     }
 
-    setAudioError(null)
     setSessionSaved(false)
 
     // Set start time FIRST, before any recording starts
@@ -151,117 +116,19 @@ export function RecordingControls() {
     console.log('⏰ Recording start time set:', recordingStartTime)
 
     // Start audio recording FIRST (before browser) to capture everything
+    let audioStarted = false
     if (isVoiceEnabled) {
-      console.log('🎤 Voice recording enabled - checking microphone permission...')
-      try {
-        const permResult = await window.electronAPI.checkMicrophonePermission()
-        console.log('🎤 Microphone permission result:', permResult)
-        
-        if (!permResult.granted) {
-          console.error('❌ Microphone permission denied')
-          setAudioError('Microphone permission denied')
-          setAudioStatus('error')
-          setAudioActive(false)
-          return
-        }
-        
-        // Validate selected device exists before requesting stream
-        if (selectedMicrophoneId) {
-          console.log('🎤 Validating selected microphone device...')
-          const devices = await navigator.mediaDevices.enumerateDevices()
-          const deviceExists = devices.some(d => d.deviceId === selectedMicrophoneId)
-          
-          if (!deviceExists) {
-            console.warn('⚠️  Selected microphone not found, falling back to default')
-            setAudioError('Selected microphone not available, using default')
-            // Clear selected device and fall back to default
-            setSelectedMicrophoneId(undefined)
-            // Update settings to clear the invalid device
-            if (window.electronAPI) {
-              await window.electronAPI.updateMicrophoneSettings({ selectedMicrophoneId: undefined })
-            }
-          }
-        }
-        
-        console.log('🎤 Requesting microphone stream...')
-        console.log('🎤 Selected microphone ID:', selectedMicrophoneId)
-        
-        // Try to get stream with selected device
-        let stream: MediaStream | undefined
-        try {
-          stream = await navigator.mediaDevices.getUserMedia({
-            audio: {
-              deviceId: selectedMicrophoneId ? { exact: selectedMicrophoneId } : undefined,
-              echoCancellation: true,
-              noiseSuppression: true,
-              autoGainControl: true,
-              sampleRate: 16000  // Match Whisper's expected sample rate
-            }
-          })
-          console.log('🎤 Microphone stream acquired')
-        } catch (getUserMediaError) {
-          console.error('❌ Failed to get stream with selected device:', getUserMediaError)
-          
-          // Fallback to default device if selected device fails
-          if (selectedMicrophoneId) {
-            console.warn('🔄 Falling back to default microphone...')
-            try {
-              stream = await navigator.mediaDevices.getUserMedia({
-                audio: {
-                  echoCancellation: true,
-                  noiseSuppression: true,
-                  autoGainControl: true,
-                  sampleRate: 16000
-                }
-              })
-              console.log('✅ Fallback to default device succeeded')
-              setAudioError(null)
-            } catch (fallbackError) {
-              console.error('❌ Fallback to default device also failed:', fallbackError)
-              setAudioError(fallbackError instanceof Error ? fallbackError.message : 'Failed to access any microphone')
-              setAudioStatus('error')
-              return
-            }
-          } else {
-            // No selected device, so initial failure is a real error
-            console.error('❌ Failed to access default microphone')
-            setAudioError(getUserMediaError instanceof Error ? getUserMediaError.message : 'Failed to access microphone')
-            setAudioStatus('error')
-            return
-          }
-        }
-        
-        if (stream) {
-          // Store stream reference
-          audioStreamRef.current = stream
-
-          mediaRecorderRef.current = new MediaRecorder(stream, {
-            mimeType: 'audio/webm;codecs=opus',
-            audioBitsPerSecond: 128000
-          })
-          audioChunksRef.current = []
-
-          mediaRecorderRef.current.ondataavailable = (e) => {
-            if (e.data.size > 0) {
-              audioChunksRef.current.push(e.data)
-              incrementAudioChunks()
-            }
-          }
-
-          mediaRecorderRef.current.start(1000)
-          setAudioStatus('recording')
-          console.log('🎤 Audio recording started at:', recordingStartTime)
-        }
-      } catch (err) {
-        console.error('❌ Failed to start audio recording:', err)
-        setAudioError(err instanceof Error ? err.message : 'Failed to access microphone')
-        setAudioStatus('error')
-        setAudioActive(false)
+      console.log('🎤 Voice recording enabled, starting audio...')
+      console.log('🎤 Selected microphone ID:', selectedMicrophoneId)
+      audioStarted = await startAudio(selectedMicrophoneId)
+      if (!audioStarted) {
+        // startAudio already set audioStatus/audioError in the store
         return
       }
+      console.log('🎤 Audio recording started at:', recordingStartTime)
     } else {
       console.log('🔇 Voice recording disabled')
-      setAudioActive(false)
+      if (window.electronAPI) void window.electronAPI.updateAudioActivity(false)
     }
 
     // Now start browser recording - pass the startTime so backend uses the same timestamp
@@ -269,25 +136,17 @@ export function RecordingControls() {
     console.log('  URL:', startUrl)
     console.log('  Output:', outputPath)
     console.log('  Start time:', recordingStartTime)
-    
+
     try {
       const result = await window.electronAPI.startRecording(startUrl, outputPath, recordingStartTime)
       console.log('🌐 Browser recording result:', result)
-      
+
       if (!result.success) {
         console.error('❌ Failed to start recording:', result.error)
         // Stop audio if browser failed to start
-        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        if (audioStarted) {
           console.log('🎤 Stopping audio due to browser recording failure')
-          mediaRecorderRef.current.stop()
-          mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop())
-          mediaRecorderRef.current = null
-        }
-        cleanupAudioMonitoring()
-        // Clean up audio stream reference
-        if (audioStreamRef.current) {
-          audioStreamRef.current.getTracks().forEach(track => track.stop())
-          audioStreamRef.current = null
+          await stopAudio()
         }
         return
       }
@@ -296,24 +155,15 @@ export function RecordingControls() {
       setStatus('recording')
 
       // Signal audio is active in the browser widget
-      if (isVoiceEnabled && audioStreamRef.current) {
+      if (isVoiceEnabled && audioStarted) {
         await window.electronAPI.updateAudioActivity(true)
         console.log('✅ Audio activity set to true in browser')
       }
     } catch (err) {
       console.error('❌ Exception during startRecording IPC call:', err)
-      // Stop audio if browser failed to start
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      if (audioStarted) {
         console.log('🎤 Stopping audio due to exception')
-        mediaRecorderRef.current.stop()
-        mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop())
-        mediaRecorderRef.current = null
-      }
-      cleanupAudioMonitoring()
-      // Clean up audio stream reference
-      if (audioStreamRef.current) {
-        audioStreamRef.current.getTracks().forEach(track => track.stop())
-        audioStreamRef.current = null
+        await stopAudio()
       }
     }
   }
@@ -322,92 +172,70 @@ export function RecordingControls() {
   const stopRecording = async () => {
     if (!canStop || !window.electronAPI) return
 
-    setAudioActive(false)
+    if (window.electronAPI) void window.electronAPI.updateAudioActivity(false)
     setStatus('processing')
 
     await window.electronAPI.stopRecording()
 
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      mediaRecorderRef.current.stop()
-      mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop())
-      
-      await new Promise(resolve => setTimeout(resolve, 500))
-      
-      if (audioChunksRef.current.length > 0) {
-        setAudioStatus('processing')
-        
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
-        const arrayBuffer = await audioBlob.arrayBuffer()
-        
-        console.log('='.repeat(60))
-        console.log('🎤 Audio Recording Summary')
-        console.log('='.repeat(60))
-        console.log(`Total audio chunks: ${audioChunksRef.current.length}`)
-        console.log(`Total audio size: ${(arrayBuffer.byteLength / 1024).toFixed(2)} KB`)
-        console.log(`Audio duration (approx): ${audioChunksRef.current.length} seconds`)
-        console.log('='.repeat(60))
-        
-        const result = await window.electronAPI.transcribeAudio(arrayBuffer)
-        if (result.success && result.segments) {
-          console.log('✅ Transcription successful')
-          console.log(`Segments received: ${result.segments.length}`)
-          result.segments.forEach((seg: any, idx: number) => {
-            console.log(`  [${idx + 1}] ${seg.startTime}ms -> ${seg.endTime}ms: "${seg.text}"`)
-          })
-          setTranscriptSegments(result.segments)
-          setAudioStatus('complete')
-          
-          // Distribute voice segments across actions RIGHT AFTER transcription
-          if (startTime && result.segments.length > 0) {
-            console.log(`Distributing ${result.segments.length} voice segments across ${actions.length} actions...`)
-            try {
-              const distributionResult = await window.electronAPI.distributeVoiceSegments(
-                actions,
-                result.segments,
-                startTime
-              )
-              if (distributionResult.success && distributionResult.actions) {
-                console.log('Voice segments distributed successfully')
-                
-                // Update actions in store with distributed voice segments
-                // We need to replace all actions with the new ones that have voice segments
-                const actionsWithVoice = distributionResult.actions
-                
-                // Generate narrative text locally for UI display using shared builder
-                const narrativeText = buildNarrativeWithSentenceLevelDistribution(actionsWithVoice)
-                setTranscriptText(narrativeText)
-                console.log('Narrative text generated successfully for UI')
-                
-                // Update actions in store - replace entire actions array with distributed ones
-                useRecordingStore.setState({ actions: actionsWithVoice })
-              } else if ('success' in distributionResult && !distributionResult.success) {
-                console.error('Failed to distribute voice segments:', distributionResult.error)
-              }
-            } catch (error) {
-              console.error('Exception during voice distribution:', error)
+    // stopAudio() stops the MediaRecorder, waits 500 ms for final chunk, cleans up stream
+    const audioBlob = await stopAudio()
+
+    if (audioBlob) {
+      setAudioStatus('processing')
+
+      const arrayBuffer = await audioBlob.arrayBuffer()
+
+      console.log('='.repeat(60))
+      console.log('🎤 Audio Recording Summary')
+      console.log('='.repeat(60))
+      console.log(`Total audio size: ${(arrayBuffer.byteLength / 1024).toFixed(2)} KB`)
+      console.log('='.repeat(60))
+
+      const result = await window.electronAPI.transcribeAudio(arrayBuffer)
+      if (result.success && result.segments) {
+        console.log('✅ Transcription successful')
+        console.log(`Segments received: ${result.segments.length}`)
+        result.segments.forEach((seg: TranscriptSegment, idx: number) => {
+          console.log(`  [${idx + 1}] ${seg.startTime}ms -> ${seg.endTime}ms: "${seg.text}"`)
+        })
+        setTranscriptSegments(result.segments)
+        setAudioStatus('complete')
+
+        // Distribute voice segments across actions RIGHT AFTER transcription
+        if (startTime && result.segments.length > 0) {
+          console.log(`Distributing ${result.segments.length} voice segments across ${actions.length} actions...`)
+          try {
+            const distributionResult = await window.electronAPI.distributeVoiceSegments(
+              actions,
+              result.segments,
+              startTime
+            )
+            if (distributionResult.success && distributionResult.actions) {
+              console.log('Voice segments distributed successfully')
+
+              const actionsWithVoice = distributionResult.actions
+
+              // Generate narrative text locally for UI display using shared builder
+              const narrativeText = buildNarrativeWithSentenceLevelDistribution(actionsWithVoice)
+              setTranscriptText(narrativeText)
+              console.log('Narrative text generated successfully for UI')
+
+              // Update actions in store - replace entire actions array with distributed ones
+              useRecordingStore.setState({ actions: actionsWithVoice })
+            } else if ('success' in distributionResult && !distributionResult.success) {
+              console.error('Failed to distribute voice segments:', distributionResult.error)
             }
+          } catch (error) {
+            console.error('Exception during voice distribution:', error)
           }
-        } else {
-          console.error('❌ Transcription failed:', result)
-          setAudioError('success' in result && !result.success ? result.error : 'Transcription failed')
-          setAudioStatus('error')
         }
       } else {
-        console.warn('⚠️  No audio chunks recorded')
-        setAudioStatus('idle')
-      }
-      
-      mediaRecorderRef.current = null
-      audioChunksRef.current = []
-
-      cleanupAudioMonitoring()
-      
-      // Clean up audio stream reference
-      if (audioStreamRef.current) {
-        audioStreamRef.current.getTracks().forEach(track => track.stop())
-        audioStreamRef.current = null
+        console.error('❌ Transcription failed:', result)
+        setAudioError('success' in result && !result.success ? result.error : 'Transcription failed')
+        setAudioStatus('error')
       }
     } else {
+      console.warn('⚠️  No audio chunks recorded')
       setAudioStatus('idle')
     }
 
