@@ -1,369 +1,192 @@
-# Agent Guidelines for Dodo Recorder
+# Project Overview
+Dodo Recorder is an Electron + React desktop app that records browser interactions and optional
+voice commentary, then exports AI-ready session bundles (`INSTRUCTIONS.md`, `actions.json`,
+`screenshots/`) for automated test generation across frameworks such as Playwright and Cypress.
+It focuses on local-first processing (Whisper.cpp + ffmpeg) and ships with platform build flows
+for macOS ARM64 and Windows x64.
 
-This document provides coding guidelines and commands for AI agents working on this codebase.
+## Repository Structure
+- `.github/` - GitHub templates and CI workflow for cross-platform production builds.
+- `build/` - Build, packaging, icon generation, and Playwright browser install scripts.
+- `dist/` - Generated renderer build output (Vite; do not edit manually).
+- `dist-electron/` - Generated Electron build output (do not edit manually).
+- `docs/` - Product, architecture, build, debugging, and feature deep-dive documentation.
+- `electron/` - Electron main/preload code, IPC handlers, recorder, transcription, and settings.
+- `models/` - Whisper binaries and model location (`ggml-small.en.bin` downloaded manually).
+- `node_modules/` - Installed dependencies (generated; do not edit manually).
+- `playwright-browsers/` - Locally installed Playwright browser binaries used by the app.
+- `release/` - Packaged app artifacts from `electron-builder` (generated).
+- `shared/` - Shared types/constants/utilities used by main and renderer processes.
+- `src/` - React renderer app (components, hooks, store, types, styling).
+- `test-context/` - Reserved test context workspace (currently empty).
+- `test-results/` - Playwright artifacts/results output (generated).
+- `test-sessions/` - Local recorded session outputs for manual testing (generated/ignored).
+- `tests/` - Test scaffolding directories (`e2e`, `helpers`, `fixtures`), currently minimal.
 
-## Project Overview
-
-Dodo Recorder is an Electron + React + TypeScript desktop application for recording browser interactions with Playwright, voice commentary transcription via Whisper.cpp, and generating session bundles for AI-assisted test generation.
-
-**Tech Stack:**
-- **Frontend:** React 18, TypeScript, Vite, Tailwind CSS, Zustand (state management)
-- **Backend:** Electron 28, Node.js 18+, Playwright
-- **Audio:** Whisper.cpp for transcription, ffmpeg for audio processing
-- **UI Components:** shadcn/ui patterns (CVA for variants)
-
-## Build/Lint/Test Commands
-
-### Development
+## Build & Development Commands
 ```bash
-npm run dev                    # Start Vite dev server + Electron in watch mode
+# Install dependencies (runs postinstall browser install)
+npm install
+
+# Reinstall bundled Playwright browsers manually
+npm run install:browsers
+
+# Download required Whisper model (466 MB)
+curl -L -o models/ggml-small.en.bin \
+  https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.en.bin
 ```
 
-### Build (for testing only)
 ```bash
-npm run build                  # Build the app for local testing
-npm run preview               # Preview Vite build (no Electron)
+# Run app in development mode (Vite + Electron watch)
+npm run dev
 ```
 
-### Output
-- Development: Runs from source files
-- Test builds: `release/` directory (for local testing only)
-- Electron compiled output: `dist-electron/` (main.js, preload.js)
-- Renderer compiled output: `dist/`
+```bash
+# Local unsigned test build (macOS ARM64)
+npm run build
 
-### Testing
-**No automated test suite currently exists.** Manual testing only.
+# Production build (signed/notarized on macOS when env vars are set)
+npm run build:prod
 
-If you add tests:
-- Name test files: `*.test.ts` or `*.spec.ts`
-- Place alongside source files or in `__tests__` directories
-- Consider Jest or Vitest for unit tests
-
-## Code Style Guidelines
-
-### Imports
-```typescript
-// Group imports: external dependencies → internal modules → types → assets
-import { app, BrowserWindow } from 'electron'          // External
-import { logger } from './utils/logger'                // Internal
-import type { RecordedAction } from '@/types/session'  // Types
-import saurusIcon from '@/assets/saurus.png'                 // Assets
-
-// Use path alias @/* for src/ files (configured in tsconfig.json and vite.config.ts)
-import { useRecordingStore } from '@/stores/recordingStore'
-
-// Import types separately when possible
-import type { SessionBundle, RecordingStatus } from '@/types/session'
+# Generate app icons
+npm run generate-icons
 ```
 
-### TypeScript
-
-**Strict Mode Enabled:**
-- `strict: true` in tsconfig.json
-- `noUnusedLocals: true` and `noUnusedParameters: true`
-- Must handle all type errors
-
-**Type Conventions:**
-```typescript
-// Use interface for object shapes
-interface RecordingState {
-  status: RecordingStatus
-  actions: RecordedAction[]
-}
-
-// Use type for unions, primitives, or utility types
-type RecordingStatus = 'idle' | 'recording' | 'paused' | 'processing' | 'saving'
-
-// Shared types live in shared/types.ts (accessible by both main and renderer)
-// Renderer-only types in src/types/
-// Main process types in electron/ alongside usage
-
-// Always type function parameters and return values
-async function validateUrl(url: string): Promise<{ valid: boolean; error?: string }> {
-  // Implementation
-}
-
-// Use explicit return types for public APIs
-export async function start(url: string, screenshotDir?: string): Promise<void> {
-  // Implementation
-}
+```bash
+# Type-check renderer and Electron/shared code
+npx tsc --noEmit
+npx tsc -p tsconfig.node.json
 ```
 
-### React Components
+> TODO: No dedicated `npm test` script is defined in `package.json`.
 
-```typescript
-// Use function declarations for components (not arrow functions)
-export default function App() {
-  return <div>...</div>
-}
+> TODO: No dedicated lint script/config (ESLint/Prettier) is defined in repo root.
 
-// Use React.forwardRef for components needing refs
-const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, ...props }, ref) => {
-    return <button ref={ref} {...props} />
-  }
-)
-Button.displayName = 'Button'
-
-// Use Zustand for state management (not Context API)
-const status = useRecordingStore((state) => state.status)
-const setStatus = useRecordingStore((state) => state.setStatus)
+```bash
+# Debug production logs (macOS)
+tail -f ~/Library/Logs/dodo-recorder/main.log
 ```
 
-### Naming Conventions
-
-```typescript
-// Files: camelCase for utilities, PascalCase for components/classes
-// utils/logger.ts, components/RecordingControls.tsx
-
-// Functions: camelCase, descriptive verb-noun pairs
-function validateUrl(url: string) { }
-async function requestMicrophonePermission() { }
-
-// Classes: PascalCase
-class BrowserRecorder extends EventEmitter { }
-
-// Constants: UPPER_SNAKE_CASE for true constants
-const MAX_AUDIO_SIZE = 50 * 1024 * 1024  // 50MB
-const ALLOWED_PROTOCOLS = ['http:', 'https:']
-
-// React component props: PascalCase with "Props" suffix
-interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'default' | 'destructive' | 'outline'
-  size?: 'default' | 'sm' | 'lg' | 'icon'
-}
-
-// Event handlers: "handle" or "on" prefix
-const handleClick = () => { }
-const onFrameNavigated = (frame: any) => { }
+```bash
+# Release tagging/deploy prep (from docs/building.md)
+git tag -a v0.3.0 -m "Release v0.3.0"
+git push origin v0.3.0
 ```
 
-### Error Handling
+> TODO: No single local deploy command exists; release uploads are handled via
+> `.github/workflows/build.yml` (`workflow_dispatch`).
 
-```typescript
-// Use IpcResult pattern for IPC calls
-export interface IpcResultSuccess<T = object> {
-  success: true
-  data?: T
-}
+## Code Style & Conventions
+- TypeScript is strict (`strict: true`, `noUnusedLocals`, `noUnusedParameters`,
+  `noFallthroughCasesInSwitch`).
+- Use path alias `@/*` for renderer imports (`@/components/...`, `@/stores/...`).
+- Naming follows existing patterns: React components in `PascalCase`, hooks as `useX`,
+  utility modules in `camelCase`, and shared type names in `PascalCase`.
+- Follow file-local style when editing (TS/TSX commonly uses single quotes and no semicolons;
+  build scripts in `build/*.js` use semicolons).
+- Keep IPC boundaries explicit: renderer calls `window.electronAPI.*`; privileged work stays in
+  `electron/`.
+- Lint configuration:
+  - > TODO: Repository has no root ESLint/Prettier config; standardize and document formatter/lint
+    rules.
+- Commit message template (based on current history style):
+  1. `<area>: <short imperative summary>`
+  2. Example: `recording: handle no-action transcript generation`
 
-export interface IpcResultError {
-  success: false
-  error: string
-}
-
-export type IpcResult<T = object> = (IpcResultSuccess<T> & T) | IpcResultError
-
-// Validate inputs early
-function validateUrl(url: string): { valid: boolean; error?: string } {
-  if (!url || typeof url !== 'string') {
-    return { valid: false, error: 'URL is required' }
-  }
-  // ... more validation
-  return { valid: true }
-}
-
-// Use try-catch for async operations
-try {
-  await this.page.goto(url)
-} catch (e) {
-  logger.error('Failed to navigate:', e)
-  throw new Error('Navigation failed')
-}
-
-// Use logger utility (not console.log directly in main process)
-import { logger } from './utils/logger'
-logger.info('Recording started')
-logger.error('Failed to start recording:', error)
-logger.debug('Debug info')  // Shows in development, logs to file in production
-
-// In renderer process (React), console.log is fine for debugging
-console.log('🎬 startRecording() called')
-console.error('❌ Failed to start recording:', error)
+## Architecture Notes
+```mermaid
+flowchart LR
+  A[React Renderer<br/>src/] -->|IPC via preload| B[Electron Main<br/>electron/main.ts]
+  B --> C[Browser Recorder<br/>Playwright + injected script]
+  A --> D[Audio Capture<br/>MediaRecorder]
+  D -->|IPC transcribe-audio| E[Transcriber<br/>ffmpeg + Whisper.cpp]
+  E --> F[Voice Distribution<br/>time-window matching]
+  C --> G[Recorded Actions]
+  F --> H[Narrative Builder<br/>shared/narrativeBuilder.ts]
+  G --> H
+  H --> I[Session Writer<br/>INSTRUCTIONS.md + actions.json + screenshots]
 ```
 
-### Comments and Documentation
+The app uses Electron's two-process model: a sandboxed React renderer (`src/`) for UI and
+state, and a privileged main process (`electron/`) for filesystem, browser automation, and
+transcription. The renderer starts/stops recording through IPC, the main process launches a
+Playwright browser with injected capture scripts, and actions stream back to UI in real time.
+Voice audio is recorded in renderer memory, sent for local transcription (ffmpeg preprocessing +
+Whisper.cpp), aligned to actions using configurable timing windows, then serialized by the
+session writer into a compact AI-consumable bundle.
 
-```typescript
-// Use JSDoc for public APIs and complex functions
-/**
- * Starts recording browser interactions
- * @param url - The URL to navigate to
- * @param screenshotDir - Optional directory to save screenshots
- * @throws {Error} If browser fails to launch or navigate
- * @returns Promise that resolves when recording has started
- */
-async start(url: string, screenshotDir?: string): Promise<void> {
-  // Implementation
-}
+## Testing Strategy
+- Unit tests:
+  - > TODO: No unit test framework/config is currently wired (no `npm test`, Jest, or Vitest).
+- Integration tests:
+  - > TODO: No dedicated integration test runner/config is currently wired.
+- E2E tests:
+  - `tests/` contains E2E scaffolding (`tests/e2e`, `tests/helpers`, `tests/fixtures`), but there
+    are currently no committed spec files.
+- Local verification today:
+  1. Run `npm run dev` and validate recorder/transcription flows manually.
+  2. Run `npm run build` for packaging sanity checks.
+  3. Run `npx tsc --noEmit` and `npx tsc -p tsconfig.node.json` for type safety.
+- CI verification:
+  - `.github/workflows/build.yml` runs `npm ci` + `npm run build:prod` for macOS/Windows and
+    uploads artifacts.
+  - > TODO: Add automated test execution stage(s) to CI once test suites are implemented.
 
-// Inline comments for non-obvious logic
-// Skip injection in iframes to reduce overhead
-if (window !== window.top) return
+## Security & Compliance
+- Keep secrets out of git: `.env`, certificate files (`*.p12`, `*.pem`), and credentials are
+  gitignored; use `.env.example` as template.
+- macOS signing/notarization secrets are passed via GitHub Actions secrets (`APPLE_ID`,
+  `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID`, certificate/password).
+- Security vulnerability reporting is private via `SECURITY.md` email contact.
+- Data handling is local-first: transcription runs locally with Whisper.cpp; no cloud STT path is
+  documented.
+- Dependency and vulnerability scanning:
+  - > TODO: No explicit dependency scanning step is configured in CI.
+- License:
+  - Project is MIT licensed (`LICENSE`).
 
-// Module-level comments for file purpose
-/**
- * Logger utility for handling sensitive data in logs
- * Provides environment-aware logging with different levels
- */
-```
+## Agent Guardrails
+- Never modify or commit secrets/credentials (`.env*`, `certificate.p12`, keys, signing secrets).
+- Treat generated outputs as read-only unless explicitly asked: `dist/`, `dist-electron/`,
+  `release/`, `node_modules/`, `test-results/`, `test-sessions/`.
+- Do not alter bundled binaries/models (`models/unix/whisper`, `models/win/*`, model artifacts)
+  unless the task is explicitly about binary/model updates.
+- Require human review for changes to signing/release/CI surfaces:
+  `electron-builder*.json`, `.github/workflows/`, `build/build-prod.js`.
+- Preserve Electron security boundaries: no direct Node access from renderer; use `preload` + IPC.
+- Prefer minimal, scoped edits and keep docs in sync when output format/architecture changes.
+- Rate limits:
+  - > TODO: No explicit API/network rate-limit policy is defined; keep external downloads minimal
+    and deterministic.
 
-### File Organization
+## Extensibility Hooks
+- IPC extension points:
+  1. Add handlers in `electron/ipc/recording.ts` or `electron/ipc/session.ts`.
+  2. Register centrally in `electron/ipc/handlers.ts`.
+  3. Expose safe bridge methods via `electron/preload.ts` and `src/types/electron.d.ts`.
+- Recording/action extensibility:
+  - Browser capture behavior lives in `electron/browser/injected-script.ts` and
+    `electron/browser/recorder.ts`.
+- Output extensibility:
+  - Narrative generation is centralized in `shared/narrativeBuilder.ts`.
+  - Session template content is controlled in `electron/session/instructions-template.ts`.
+- Runtime configuration hooks:
+  - Persistent settings are in `electron/settings/store.ts` (voice windows, output options,
+    transcription timeout, user preferences, selected microphone).
+- Environment variables in active use:
+  - `VITE_DEV_SERVER_URL`, `NODE_ENV`, `PLAYWRIGHT_BROWSERS_PATH`,
+    `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID`, `CSC_LINK`,
+    `CSC_KEY_PASSWORD`, `CSC_NAME`.
+- Feature flags:
+  - > TODO: No formal feature-flag system is currently defined.
 
-```
-dodo-recorder/
-├── electron/              # Electron main process
-│   ├── main.ts           # Entry point
-│   ├── preload.ts        # Preload script
-│   ├── browser/          # Playwright browser recording
-│   ├── audio/            # Audio recording & transcription
-│   ├── session/          # Session management
-│   ├── ipc/              # IPC handlers
-│   ├── settings/         # Settings store
-│   └── utils/            # Shared utilities
-├── src/                  # React renderer process
-│   ├── main.tsx          # React entry point
-│   ├── App.tsx           # Root component
-│   ├── components/       # React components
-│   ├── stores/           # Zustand stores
-│   ├── lib/              # Utilities
-│   ├── types/            # TypeScript types
-│   └── assets/           # Images, fonts
-├── shared/               # Code shared between main and renderer
-│   └── types.ts          # Shared type definitions
-└── models/               # Whisper.cpp binaries and AI model
-    ├── unix/             # Unix binary (macOS)
-    │   └── whisper        # Whisper.cpp binary (committed to git)
-    ├── win/              # Windows binaries
-    │   └── whisper-cli.exe # Whisper.cpp binary (committed to git)
-    └── ggml-small.en.bin # AI model weights (download manually, gitignored)
-```
-
-## Session Output Format
-
-Each recording session produces a compact folder with 3 essential components:
-
-```
-session-YYYY-MM-DD-HHMMSS/
-├── INSTRUCTIONS.md    # General AI instructions (reusable across sessions)
-├── actions.json       # Complete session data (metadata + narrative + actions)
-└── screenshots/       # Visual captures
-```
-
-**Key Characteristics:**
-- **Framework-Agnostic**: Works with Playwright, Cypress, Selenium, Puppeteer, etc.
-- **AI-Instruction-Complete**: Complete parsing documentation in INSTRUCTIONS.md
-- **Token-Optimized**: Few tokens per session (INSTRUCTIONS.md is reused)
-- **Single Source**: All session data in actions.json
-- **Self-Documenting**: All instructions embedded, no external docs needed
-- **Human-Readable**: Clear metadata and narrative flow
-
-**File Purposes:**
-- **INSTRUCTIONS.md**: Reusable framework-agnostic + framework-specific instructions
-  - Written once per output directory, shared across all sessions
-  - How to parse action references, choose locators, interpret action types
-  - Framework detection logic (Playwright/Cypress)
-  - Framework-specific implementation guides with code examples
-  
-- **actions.json**: Session-specific data with three sections:
-  - `_meta`: Session metadata (ID, timestamps, URL, duration, action counts)
-  - `narrative`: Voice commentary with embedded `[action:SHORT_ID:TYPE]` references
-  - `actions`: Array of recorded actions with multiple locator strategies
-
-**Action References Format:**
-- Actions referenced in narrative as `[action:SHORT_ID:TYPE]`
-- `SHORT_ID` = First 8 chars of full UUID in actions.json
-- Example: `[action:8c61934e:click]` → `"id": "8c61934e-4cd3-4793-bdb5-5c1c6d696f37"`
-
-**Multiple Locator Strategies:**
-- Each action provides multiple locator strategies with confidence levels
-- Priority: testId > text/placeholder/role > css > xpath
-- Use high confidence locators when available
-
-## Logging and Debugging
-
-### Production Logging with electron-log
-
-The app uses [`electron-log`](https://www.npmjs.com/package/electron-log) for production-ready logging:
-
-**Features:**
-- Automatic file logging to standard OS locations
-- Console output in development
-- Log rotation (max 10MB per file)
-- Multiple log levels (debug, info, warn, error)
-
-**Log Locations:**
-```
-macOS:    ~/Library/Logs/dodo-recorder/main.log
-Windows:  %USERPROFILE%\AppData\Roaming\dodo-recorder\logs\main.log
-```
-
-**Usage in Main Process:**
-```typescript
-import { logger } from './utils/logger'
-
-// Log levels
-logger.debug('Detailed debug info')    // Dev only
-logger.info('Normal operation')         // Always logged to file
-logger.warn('Warning message')          // Always logged
-logger.error('Error occurred', error)   // Always logged
-
-// Get log file path
-const logPath = logger.getLogPath()
-
-// Log startup info (call once in main.ts)
-logger.logStartupInfo()
-```
-
-**Usage in Renderer Process:**
-```typescript
-// Use console.log for renderer debugging - shows in DevTools
-console.log('🎬 Component rendered')
-console.error('❌ Error in component:', error)
-
-// Access logs via IPC
-const logPath = await window.electronAPI.getLogPath()
-await window.electronAPI.openLogFile()    // Opens log in default editor
-await window.electronAPI.openLogFolder()  // Opens log folder
-```
-
-**In-App Log Access:**
-- The StatusBar component includes "View Logs" and folder buttons
-- Located in bottom-right of the app window
-- Users can click to open logs without knowing the path
-
-**Log Levels by Environment:**
-```typescript
-// Development (npm run dev)
-- Console: debug level
-- File: debug level
-
-// Production (built app)
-- Console: error level only
-- File: info level and above
-```
-
-**Best Practices:**
-- Use `logger` in main process (Electron), `console.log` in renderer (React)
-- Include context with errors: `logger.error('Operation failed', { url, reason })`
-- Use emojis for visual scanning: `logger.info('🎬 Recording started')`
-- Log state transitions: `logger.info(`Status: ${oldStatus} -> ${newStatus}`)`
-
-**Debugging Production Issues:**
-See [`docs/logs_and_debugging.md`](docs/logs_and_debugging.md) for comprehensive debugging guide.
-
-## Important Notes
-
-- **Whisper Model:** The 466MB `models/ggml-small.en.bin` file must be downloaded manually (not in git). The app shows an error dialog if missing.
-- **Whisper Binaries:** Platform-specific Whisper.cpp binaries are committed to git:
-  - **Windows**: `models/win/whisper-cli.exe`
-  - **macOS**: `models/unix/whisper`
-  - These are compiled from the [ggerganov/whisper.cpp](https://github.com/ggerganov/whisper.cpp) project
-  - When updating Whisper binaries, ensure they are compiled for the target platforms and placed in the appropriate `models/` subdirectory
-  - The app uses the `small.en` model (466MB) for a balance of accuracy, speed, and size
-- **Path Alias:** Use `@/*` to import from `src/` directory
-- **Tailwind:** Dark mode only (`darkMode: 'class'`), custom color scheme defined in `tailwind.config.js`
-- **Security:** Validate all IPC inputs (see `electron/utils/validation.ts` for patterns)
-- **Logging:** Main process uses `electron-log` (persists to file), renderer uses `console.log` (DevTools)
-- **IPC Handlers:** Register once in `electron/ipc/handlers.ts` to prevent duplicates
-- **Production Debugging:** Use "View Logs" button in app status bar or check log file locations above
+## Further Reading
+- [README.md](README.md)
+- [docs/architecture.md](docs/architecture.md)
+- [docs/building.md](docs/building.md)
+- [docs/user_guide.md](docs/user_guide.md)
+- [docs/output_format.md](docs/output_format.md)
+- [docs/voice_transcription.md](docs/voice_transcription.md)
+- [docs/logs_and_debugging.md](docs/logs_and_debugging.md)
+- [docs/PROJECT_DEEP_DIVE.md](docs/PROJECT_DEEP_DIVE.md)
+- [SECURITY.md](SECURITY.md)
