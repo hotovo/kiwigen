@@ -6,6 +6,7 @@ import { logger } from './utils/logger'
 import { getSettingsStore } from './settings/store'
 import { updateTimeWindows } from './utils/voiceDistribution'
 import { registerAllHandlers } from './ipc/handlers'
+import { runtimeDependencyManager } from './runtime/dependency-manager'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -13,24 +14,6 @@ const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL']
 const isMac = process.platform === 'darwin'
 const isWindows = process.platform === 'win32'
 const ALLOWED_PERMISSIONS = ['media', 'microphone', 'audioCapture'] as const
-
-/**
- * Get Whisper binary path based on platform
- * - Windows: models/win/whisper-cli.exe
- * - macOS: models/unix/whisper
- */
-function getWhisperBinaryPath(): string {
-  const appPath = app.isPackaged ? process.resourcesPath : app.getAppPath()
-  const modelsDir = path.join(appPath, 'models')
-  
-  if (isWindows) {
-    // Windows: use whisper-cli.exe
-    return path.join(modelsDir, 'win', 'whisper-cli.exe')
-  } else {
-    // macOS: use whisper binary
-    return path.join(modelsDir, 'unix', 'whisper')
-  }
-}
 
 /**
  * Read build info from build-info.json
@@ -75,70 +58,6 @@ function setupPermissionHandlers() {
   session.defaultSession.setPermissionCheckHandler((webContents, permission) => {
     return ALLOWED_PERMISSIONS.includes(permission as any)
   })
-}
-
-/**
- * Check if Whisper components exist and show helpful error if missing
- */
-function checkWhisperComponents(): boolean {
-  const appPath = app.isPackaged
-    ? process.resourcesPath
-    : app.getAppPath()
-  const modelPath = path.join(appPath, 'models', 'ggml-small.en.bin')
-  const binaryPath = getWhisperBinaryPath()
-  
-  // Check binary
-  if (!fs.existsSync(binaryPath)) {
-    const binaryName = isWindows ? 'whisper-cli.exe' : 'whisper'
-    const platformFolder = isWindows ? 'models\\win\\' : 'models/unix/'
-    logger.error('❌ Whisper binary not found at:', binaryPath)
-    
-    dialog.showMessageBoxSync({
-      type: 'error',
-      title: 'Whisper Binary Missing',
-      message: 'Whisper binary file not found',
-      detail:
-        `The whisper binary should be in the repository.\n\n` +
-        `Binary expected at:\n` +
-        `${binaryPath}\n\n` +
-        `Platform: ${process.platform}\n` +
-        `Binary name: ${binaryName}\n\n` +
-        `This file should be committed to git. Please ensure you have the latest code.`,
-      buttons: ['Exit']
-    })
-    
-    return false
-  }
-  
-  // Check model
-  if (!fs.existsSync(modelPath)) {
-    logger.error('❌ Whisper model not found at:', modelPath)
-    
-    const downloadCommand = 'curl -L -o models/ggml-small.en.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.en.bin'
-    
-    dialog.showMessageBoxSync({
-      type: 'error',
-      title: 'Whisper Model Missing',
-      message: 'Whisper model file not found',
-      detail:
-        'The application requires the Whisper model to transcribe voice recordings.\n\n' +
-        'Model file expected at:\n' +
-        modelPath + '\n\n' +
-        'To download the model, run this command in your terminal:\n\n' +
-        downloadCommand + '\n\n' +
-        'Or download manually from:\n' +
-        'https://huggingface.co/ggerganov/whisper.cpp/tree/main',
-      buttons: ['Exit']
-    })
-    
-    return false
-  }
-  
-  const stats = fs.statSync(modelPath)
-  const sizeMB = (stats.size / (1024 * 1024)).toFixed(2)
-  const binaryName = isWindows ? 'whisper-cli.exe' : 'whisper'
-  logger.info(`✅ Whisper binary (${binaryName}) and model found (model: ${sizeMB} MB)`)
-  return true
 }
 
 async function createWindow() {
@@ -190,11 +109,8 @@ app.whenReady().then(async () => {
     logger.info('📦 Build: unknown')
   }
   
-  // Check if Whisper components exist
-  if (!checkWhisperComponents()) {
-    app.quit()
-    return
-  }
+  // Initialize runtime dependency manager
+  await runtimeDependencyManager.initialize()
   
   // Initialize settings
   const settings = getSettingsStore()

@@ -9,24 +9,6 @@ import type { TranscriptSegment } from '../../shared/types'
 const ffmpeg = require('fluent-ffmpeg')
 
 /**
- * Get Whisper binary path based on platform
- * - Windows: models/win/whisper-cli.exe
- * - macOS: models/unix/whisper
- */
-function getWhisperBinaryPath(): string {
-  const appPath = app.isPackaged ? process.resourcesPath : app.getAppPath()
-  const modelsDir = path.join(appPath, 'models')
-  
-  if (process.platform === 'win32') {
-    // Windows: use whisper-cli.exe
-    return path.join(modelsDir, 'win', 'whisper-cli.exe')
-  } else {
-    // macOS: use whisper binary
-    return path.join(modelsDir, 'unix', 'whisper')
-  }
-}
-
-/**
  * Get ffmpeg binary path, handling both development and production environments
  */
 function getFfmpegPath(): string {
@@ -57,8 +39,12 @@ interface WhisperResult {
 export class Transcriber {
   private isInitialized = false
   private transcriptionTimeoutMs: number
+  private modelPath: string
+  private whisperBinaryPath: string
 
-  constructor(transcriptionTimeoutMs: number = 300000) {
+  constructor(modelPath: string, whisperBinaryPath: string, transcriptionTimeoutMs: number = 300000) {
+    this.modelPath = modelPath
+    this.whisperBinaryPath = whisperBinaryPath
     this.transcriptionTimeoutMs = transcriptionTimeoutMs
   }
 
@@ -68,40 +54,30 @@ export class Transcriber {
    * @returns Promise that resolves when initialization is complete
    */
   async initialize(): Promise<void> {
-    const modelPath = this.getModelPath()
-    
     logger.info('='.repeat(60))
     logger.info('🎤 Whisper Transcriber Initialization')
     logger.info('='.repeat(60))
-    logger.info('Model: small.en (bundled)')
-    logger.info(`Path: ${modelPath}`)
+    logger.info('Model: small.en')
+    logger.info(`Path: ${this.modelPath}`)
+    logger.info(`Binary: ${this.whisperBinaryPath}`)
     
-    if (!fs.existsSync(modelPath)) {
+    if (!fs.existsSync(this.modelPath)) {
       logger.error('❌ Whisper model not found!')
-      logger.error('Please download: ggml-small.en.bin')
-      logger.error('From: https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.en.bin')
-      logger.error(`Place it in: ${path.dirname(modelPath)}`)
-    } else {
-      const stats = fs.statSync(modelPath)
-      const sizeMB = (stats.size / (1024 * 1024)).toFixed(2)
-      logger.info(`✅ Model ready (${sizeMB} MB)`)
+      throw new Error(`Whisper model not found at ${this.modelPath}`)
     }
+
+    if (!fs.existsSync(this.whisperBinaryPath)) {
+      logger.error('❌ Whisper binary not found!')
+      throw new Error(`Whisper binary not found at ${this.whisperBinaryPath}`)
+    }
+
+    const stats = fs.statSync(this.modelPath)
+    const sizeMB = (stats.size / (1024 * 1024)).toFixed(2)
+    logger.info(`✅ Model ready (${sizeMB} MB)`)
     
     logger.info('='.repeat(60))
     
     this.isInitialized = true
-  }
-
-  /**
-   * Get the model path (always uses small.en)
-   * Uses models folder in the project root
-   */
-  private getModelPath(): string {
-    const appPath = app.isPackaged
-      ? process.resourcesPath
-      : app.getAppPath()
-    const modelsDir = path.join(appPath, 'models')
-    return path.join(modelsDir, 'ggml-small.en.bin')
   }
 
   /**
@@ -205,12 +181,11 @@ export class Transcriber {
       logger.info('🎙️  Starting Whisper Transcription (Direct whisper.cpp)')
       logger.info('='.repeat(60))
       logger.info(`Audio file: ${audioPath}`)
-      logger.info('Model: small.en (bundled)')
+      logger.info('Model: small.en')
       
-      // Get whisper binary path based on platform
-      const whisperPath = getWhisperBinaryPath()
+      const whisperPath = this.whisperBinaryPath
       
-      const modelPath = this.getModelPath()
+      const modelPath = this.modelPath
       const jsonOutputPath = `${audioPath}.json`
       
       // Prompt text to prime Whisper - also used for filtering hallucinations

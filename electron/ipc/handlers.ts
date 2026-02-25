@@ -1,6 +1,7 @@
 import { BrowserWindow, ipcMain } from 'electron'
 import { registerRecordingHandlers } from './recording'
 import { registerSessionHandlers, registerSettingsHandlers } from './session'
+import { registerRuntimeHandlers } from './runtime'
 
 // Track if handlers have been registered to prevent duplicate registration
 let handlersRegistered = false
@@ -18,6 +19,7 @@ export function registerAllHandlers(mainWindow: BrowserWindow | null): void {
   registerRecordingHandlers(mainWindow)
   registerSessionHandlers()
   registerSettingsHandlers()
+  registerRuntimeHandlers(mainWindow)
   
   handlersRegistered = true
 }
@@ -34,6 +36,9 @@ export function cleanupHandlers(): void {
   ipcMain.removeHandler('save-session')
   ipcMain.removeHandler('get-settings')
   ipcMain.removeHandler('update-settings')
+  ipcMain.removeHandler('runtime-dependencies-status')
+  ipcMain.removeHandler('runtime-dependencies-install')
+  ipcMain.removeHandler('runtime-dependencies-cancel')
   
   handlersRegistered = false
 }

@@ -81,21 +81,41 @@ Log File: /Users/xxx/Library/Logs/dodo-recorder/main.log
 
 ## Common Issues
 
+### First-Launch Setup Fails
+
+**Check logs for:**
+1. `Runtime manifest URL not configured, using bundled manifest.`
+2. `Failed to load remote runtime manifest. Falling back to bundled manifest.`
+3. `[runtime] downloading:*` / `[runtime] verifying:*` / `[runtime] extracting:*`
+4. `Checksum mismatch for ...`
+5. `Runtime manifest incomplete for ... Missing URL or SHA256.`
+
+**Typical causes:**
+- Runtime assets not uploaded to GitHub Release
+- `runtime-manifest.json` missing from release
+- Wrong checksum in manifest
+- Corporate proxy/network blocking release downloads
+
+**Fixes:**
+- Verify release has all runtime assets and `runtime-manifest.json`
+- Re-run manifest verification scripts from `docs/building.md`
+- Retry setup from in-app first-launch screen
+
 ### "Start Recording" Does Nothing
 
 **Check logs for:**
 1. `❌ Cannot start recording - preconditions not met` → URL or folder not set
-2. `Failed to start recording: Browser launch failed` → Playwright not installed
-3. `❌ Microphone permission denied` → Grant permissions in System Settings
-4. `❌ Exception during startRecording IPC call` → IPC bridge issue, restart app
+2. `Failed to start recording: Runtime dependencies are not installed yet` → run first-launch setup
+3. `Failed to start recording: Browser launch failed` → Chromium runtime asset missing/corrupt
+4. `❌ Microphone permission denied` → Grant permissions in System Settings
+5. `❌ Exception during startRecording IPC call` → IPC bridge issue, restart app
 
 ### Browser Window Doesn't Open
 
 **Solutions:**
-```bash
-npm install
-npx playwright install chromium
-```
+- Complete first-launch runtime setup in the app
+- Confirm runtime assets exist in `runtime-deps/playwright-browsers/`
+- Check startup/runtime errors in `main.log`
 
 ### Audio Recording Fails
 
@@ -106,10 +126,9 @@ npx playwright install chromium
 
 ### Whisper Issues
 
-**Missing model:**
-```bash
-curl -L -o models/ggml-small.en.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.en.bin
-```
+**Missing model/binary at runtime:**
+- Re-run first-launch setup
+- Check `runtime-deps/models/` paths in logs
 
 **Transcription fails:** Check for corrupted audio, binary permissions, model corruption.
 

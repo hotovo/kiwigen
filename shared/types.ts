@@ -105,3 +105,32 @@ export interface IpcResultError {
 
 export type IpcResult<T = object> = (IpcResultSuccess<T> & T) | IpcResultError
 
+export type RuntimeDependencyId = 'whisper-model' | 'whisper-binary' | 'playwright-chromium'
+
+export type RuntimeSetupState = 'ready' | 'needs_install' | 'installing' | 'error'
+
+export interface RuntimeDependencyEntry {
+  id: RuntimeDependencyId
+  ready: boolean
+  installedVersion: string | null
+  requiredVersion: string
+  path?: string
+  error?: string
+}
+
+export interface RuntimeDependencyStatus {
+  state: RuntimeSetupState
+  ready: boolean
+  platform: string
+  dependencies: RuntimeDependencyEntry[]
+  runtimeRoot: string
+  lastError?: string
+}
+
+export interface RuntimeInstallProgress {
+  phase: 'checking' | 'downloading' | 'verifying' | 'extracting' | 'finalizing' | 'done' | 'error'
+  dependencyId?: RuntimeDependencyId
+  bytesDownloaded?: number
+  bytesTotal?: number
+  message: string
+}

@@ -97,12 +97,11 @@ git clone https://github.com/dodosaurus/dodo-recorder.git
 cd dodo-recorder
 npm install
 
-# Download Whisper model (466 MB, required)
-curl -L -o models/ggml-small.en.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.en.bin
-
 # Run in development mode
 npm run dev
 ```
+
+Runtime dependencies (Whisper + Chromium) are now installed by the app on first launch.
 
 ### Project Structure
 
@@ -140,15 +139,10 @@ For comprehensive troubleshooting guides, see [`docs/building.md`](docs/building
 
 ### Common Issues
 
-**"Whisper model not found" Error:**
-```bash
-# Download the model (466 MB)
-curl -L -o models/ggml-small.en.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.en.bin
-```
-
-**"Whisper binary not found" Error:**
-- Pull the latest code: `git pull origin main`
-- The binary is located at `models/unix/whisper` (macOS) or `models/win/whisper-cli.exe` (Windows)
+**"Runtime dependency install failed" Error:**
+- Re-run setup from the first-launch setup screen
+- Check network access to GitHub release assets
+- Review app logs in `main.log` for download/checksum details
 
 ### Debugging
 
@@ -161,13 +155,13 @@ curl -L -o models/ggml-small.en.bin https://huggingface.co/ggerganov/whisper.cpp
 ## ❓ FAQ
 
 **Q: Why is the model not in git?**
-A: It's 466 MB—too large for git repositories. Download it once manually.
+A: It's large and now delivered as a first-launch runtime download from release assets.
 
 **Q: Can I use a different Whisper model?**
 A: The app is hard-coded to use `small.en` for consistency and performance.
 
-**Q: Do I need to download the model for every clone of repository?**
-A: Yes, but only once per machine. The file persists across npm installs.
+**Q: Do I need to download runtime dependencies for every clone of repository?**
+A: No. They install once per machine/user profile and are reused between launches until version changes.
 
 **Q: Does this work with frameworks other than Playwright?**
 A: Yes! The session output is framework-agnostic. AI agents can generate tests for Playwright, Cypress, Selenium, Puppeteer, or any other framework.
@@ -185,6 +179,7 @@ A: No. All transcription happens locally using Whisper.cpp. Your voice recording
 - **[Voice Transcription](docs/voice_transcription.md)**: Deep dive into the local transcription system
 - **[Output Format](docs/output_format.md)**: Detailed explanation of session bundle structure
 - **[Logging and Debugging](docs/logs_and_debugging.md)**: How to access logs and debug issues
+- **[Runtime Release Checklist](docs/runtime_release_checklist.md)**: Quick release steps for runtime dependency assets
 - **[Agent Guidelines](AGENTS.md)**: Coding standards and guidelines for AI agents (for reference)
 
 ---

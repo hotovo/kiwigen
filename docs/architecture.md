@@ -30,7 +30,7 @@ Electron applications run in two isolated processes:
 - Registers IPC handlers via [`registerAllHandlers()`](electron/ipc/handlers.ts:12)
 - Cleans up temporary files on startup
 - Handles window controls (minimize, maximize, close)
-- Checks for Whisper components (binary and model)
+- Initializes runtime dependency manager (first-launch install state)
 - Logs build information
 
 ### 2. IPC Handlers ([`electron/ipc/`](electron/ipc/))
@@ -41,6 +41,7 @@ export function registerAllHandlers(mainWindow: BrowserWindow | null) {
   registerRecordingHandlers(mainWindow)
   registerSessionHandlers()
   registerSettingsHandlers()
+  registerRuntimeHandlers(mainWindow)
 }
 ```
 
@@ -51,6 +52,12 @@ export function registerAllHandlers(mainWindow: BrowserWindow | null) {
 - `transcribe-audio` - Transcribes audio via Whisper
 - `distribute-voice-segments` - Associates voice with actions
 - `generate-full-transcript` - Generates timestamped transcript
+
+**[`runtime.ts`](electron/ipc/runtime.ts:1)** - Runtime setup handlers:
+- `runtime-dependencies-status` - Returns first-launch dependency status
+- `runtime-dependencies-install` - Downloads/verifies/extracts missing dependencies
+- `runtime-dependencies-cancel` - Cancels in-progress setup
+- `runtime-dependencies-progress` - Progress events to renderer
 
 **[`session.ts`](electron/ipc/session.ts:1)** - Session & settings handlers:
 - `save-session` - Saves session bundle to disk
@@ -90,6 +97,10 @@ export function registerAllHandlers(mainWindow: BrowserWindow | null) {
 
 **Action types:** `click`, `fill`, `navigate`, `keypress`, `select`, `check`, `scroll`, `assert`, `screenshot`
 
+**Runtime dependency integration:**
+- Browser executable path is resolved by the runtime dependency manager
+- Recorder no longer assumes bundled `playwright-browsers` in app resources
+
 ### 4. Audio Transcriber ([`electron/audio/transcriber.ts`](electron/audio/transcriber.ts:1))
 
 Converts voice recordings to text using Whisper.cpp (local, no cloud):
@@ -98,6 +109,27 @@ Converts voice recordings to text using Whisper.cpp (local, no cloud):
 WebM Buffer → FFmpeg (16kHz mono WAV + 1.5s silence padding)
   → Whisper.cpp CLI → JSON output → Timestamped segments
 ```
+
+**Runtime dependency integration:**
+- Transcriber receives `modelPath` and `whisperBinaryPath` at runtime
+- Paths are resolved from user-data runtime install root, not packaged resources
+
+### 4.5 Runtime Dependency Manager ([`electron/runtime/dependency-manager.ts`](electron/runtime/dependency-manager.ts:1))
+
+Handles strict first-launch dependency readiness before recording features are available.
+
+**Responsibilities:**
+- Resolve platform (`darwin-arm64`, `win32-x64`)
+- Load release runtime manifest (`runtime-manifest.json`) with bundled fallback
+- Track install state in user data (`runtime-deps/install-state.json`)
+- Download artifacts, verify SHA256, extract browser archive
+- Import legacy bundled assets during transition upgrades
+- Expose status/progress for renderer setup gate
+
+**Managed dependencies:**
+- Whisper model (`ggml-small.en.bin`)
+- Whisper binary (platform-specific)
+- Playwright Chromium runtime archive
 
 **FFmpeg conversion:**
 ```typescript
@@ -196,11 +228,13 @@ interface AppSettings {
 ```
 App
 ├── TitleBar (window controls)
-├── Header (branding + StatusBar + DebugInfoWidget)
-├── Sidebar
-│   ├── SettingsPanel
-│   └── RecordingControls
-└── Main (ActionsList or ActionsList + TranscriptView)
+├── RuntimeSetupGate (first launch / missing runtime dependencies)
+└── Recorder UI (shown only when runtime dependencies are ready)
+    ├── Header (branding + StatusBar + DebugInfoWidget)
+    ├── Sidebar
+    │   ├── SettingsPanel
+    │   └── RecordingControls
+    └── Main (ActionsList or ActionsList + TranscriptView)
 ```
 
 **State:** Zustand store ([`src/stores/recordingStore.ts`](src/stores/recordingStore.ts:1))
@@ -239,9 +273,10 @@ session-YYYY-MM-DD-HHMMSS/
 **Recording lifecycle:**
 
 1. **Start Recording**
+   - Runtime gate must be `ready`
    - React: `window.electronAPI.startRecording(url, outputPath, startTime)`
    - IPC: [`recording.ts:start-recording`](electron/ipc/recording.ts:26)
-   - Main: Creates BrowserRecorder, SessionWriter, Transcriber
+   - Main: Resolves runtime paths, then creates BrowserRecorder, SessionWriter, Transcriber
    - Browser: Launches Chromium, injects scripts
 
 2. **User Interactions**
@@ -276,6 +311,9 @@ dodo-recorder/
 ├── electron/                    # Main process
 │   ├── main.ts                 # Entry point
 │   ├── preload.ts              # IPC bridge
+│   ├── runtime/
+│   │   ├── dependency-manager.ts # First-launch dependency installer
+│   │   └── manifest.ts         # Bundled fallback runtime manifest
 │   ├── audio/
 │   │   └── transcriber.ts      # Whisper.cpp integration
 │   ├── browser/
@@ -286,6 +324,7 @@ dodo-recorder/
 │   ├── ipc/
 │   │   ├── handlers.ts         # Central registration
 │   │   ├── recording.ts        # Recording handlers
+│   │   ├── runtime.ts          # Runtime setup handlers
 │   │   └── session.ts          # Session/settings handlers
 │   ├── session/
 │   │   ├── writer.ts           # Session output
@@ -316,10 +355,10 @@ dodo-recorder/
 ├── shared/
 │   ├── types.ts                # Shared types (RecordedAction, SessionBundle, etc.)
 │   └── narrativeBuilder.ts     # Narrative generation logic
-├── models/                     # Whisper components
-│   ├── unix/whisper            # macOS binary (committed)
-│   ├── win/whisper-cli.exe     # Windows binary (committed)
-│   └── ggml-small.en.bin      # Model weights (download manually, gitignored)
+├── models/                     # Source assets for release packaging
+│   ├── unix/whisper            # macOS binary source
+│   ├── win/whisper-cli.exe     # Windows binary source
+│   └── ggml-small.en.bin       # Model source
 └── docs/                       # Documentation
 ```
 

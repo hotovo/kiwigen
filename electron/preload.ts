@@ -1,5 +1,12 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { RecordedAction, SessionBundle, TranscriptSegment, IpcResult } from '../shared/types'
+import type {
+  RecordedAction,
+  SessionBundle,
+  TranscriptSegment,
+  IpcResult,
+  RuntimeDependencyStatus,
+  RuntimeInstallProgress,
+} from '../shared/types'
 
 export interface UserPreferences {
   startUrl: string
@@ -60,6 +67,10 @@ export interface ElectronAPI {
   openLogFile: () => Promise<IpcResult>
   openLogFolder: () => Promise<IpcResult>
   getBuildInfo: () => Promise<BuildInfo | null>
+  getRuntimeDependencyStatus: () => Promise<IpcResult<{ status: RuntimeDependencyStatus }>>
+  installRuntimeDependencies: () => Promise<IpcResult<{ status: RuntimeDependencyStatus }>>
+  cancelRuntimeDependencyInstall: () => Promise<IpcResult>
+  onRuntimeDependencyProgress: (callback: (progress: RuntimeInstallProgress) => void) => () => void
   minimizeWindow: () => void
   maximizeWindow: () => void
   closeWindow: () => void
@@ -132,6 +143,19 @@ const electronAPI: ElectronAPI = {
   openLogFile: () => ipcRenderer.invoke('open-log-file'),
   openLogFolder: () => ipcRenderer.invoke('open-log-folder'),
   getBuildInfo: () => ipcRenderer.invoke('get-build-info'),
+
+  getRuntimeDependencyStatus: () => ipcRenderer.invoke('runtime-dependencies-status'),
+  installRuntimeDependencies: () => ipcRenderer.invoke('runtime-dependencies-install'),
+  cancelRuntimeDependencyInstall: () => ipcRenderer.invoke('runtime-dependencies-cancel'),
+  onRuntimeDependencyProgress: (callback: (progress: RuntimeInstallProgress) => void) => {
+    const handler = (_: unknown, data: unknown) => {
+      if (data && typeof data === 'object' && 'phase' in data) {
+        callback(data as RuntimeInstallProgress)
+      }
+    }
+    ipcRenderer.on('runtime-dependencies-progress', handler)
+    return () => ipcRenderer.removeListener('runtime-dependencies-progress', handler)
+  },
 
   minimizeWindow: () => ipcRenderer.send('window-minimize'),
   maximizeWindow: () => ipcRenderer.send('window-maximize'),

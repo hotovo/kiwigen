@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Cross-platform script to install Playwright browsers to a local project directory
- * This allows us to bundle the browsers with the Electron app
+ * This is used to prepare runtime artifacts (not bundled in the app)
  */
 
 const { execSync } = require('child_process');
@@ -33,7 +33,7 @@ try {
 
   console.log('');
   console.log(`✅ Playwright Chromium installed to: ${BROWSERS_DIR}`);
-  console.log('📦 This directory will be bundled with the Electron app');
+  console.log('📦 Use this directory to create runtime release assets');
   console.log('');
   
   // List installed platforms

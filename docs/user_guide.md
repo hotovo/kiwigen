@@ -15,6 +15,32 @@
 
 ---
 
+## First-Launch Setup
+
+On a fresh install, Dodo Recorder shows a setup screen before the recorder UI.
+
+What happens:
+- App checks runtime dependencies (Whisper model, Whisper binary, Chromium runtime)
+- Missing dependencies are downloaded from GitHub Release assets
+- Downloads are verified with SHA256 before use
+- Browser archive is extracted into the app runtime directory
+
+While setup runs:
+- Recorder controls are gated
+- Progress and current dependency phase are shown
+- You can cancel and retry
+
+Runtime install location:
+- macOS: `~/Library/Application Support/dodo-recorder/runtime-deps/`
+- Windows: `%USERPROFILE%\AppData\Roaming\dodo-recorder\runtime-deps\`
+
+If setup fails:
+- Use **Refresh status** and retry install
+- Confirm internet access to GitHub release assets
+- Check logs in `main.log` for exact artifact failure
+
+---
+
 ## Keyboard Shortcuts
 
 | Shortcut | Action |

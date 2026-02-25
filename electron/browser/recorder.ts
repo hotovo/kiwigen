@@ -1,6 +1,5 @@
 import path from 'path'
 import fs from 'fs'
-import { app } from 'electron'
 
 // Import Playwright first
 import { chromium, Browser, Page, Frame } from 'playwright'
@@ -19,79 +18,6 @@ enum RecorderState {
   PAUSED = 'paused',
 }
 
-/**
- * Gets the path to the Playwright browsers directory
- * In development: uses project root's playwright-browsers
- * In production: uses app.asar's resources/playwright-browsers
- */
-function getBrowsersPath(): string {
-  if (app.isPackaged) {
-    // Production: browsers are in extraResources
-    return path.join(process.resourcesPath, 'playwright-browsers')
-  }
-  // Development: browsers are in project root
-  return path.join(process.cwd(), 'playwright-browsers')
-}
-
-/**
- * Gets the path to the Chromium browser executable
- * This constructs the path manually since Playwright ignores PLAYWRIGHT_BROWSERS_PATH
- *
- * Supports supported platforms and architectures:
- * - macOS ARM64: chrome-mac-arm64
- * - Windows x64: chrome-win64
- */
-function getBrowserExecutablePath(): string {
-  const browsersPath = getBrowsersPath()
-  const chromiumVersion = 'chromium-1200'
-  const chromiumPath = path.join(browsersPath, chromiumVersion)
-  
-  if (process.platform === 'darwin') {
-    // macOS: Try ARM64 first (most common)
-    const arm64Path = path.join(
-      chromiumPath,
-      'chrome-mac-arm64',
-      'Google Chrome for Testing.app',
-      'Contents',
-      'MacOS',
-      'Google Chrome for Testing'
-    )
-    if (fs.existsSync(arm64Path)) {
-      return arm64Path
-    }
-    
-    // Fallback - return ARM64 path (will fail with helpful error)
-    return arm64Path
-  } else if (process.platform === 'win32') {
-    // Windows: Try chrome-win64 first, then chrome-win
-    const win64Path = path.join(chromiumPath, 'chrome-win64', 'chrome.exe')
-    if (fs.existsSync(win64Path)) {
-      return win64Path
-    }
-    
-    const winPath = path.join(chromiumPath, 'chrome-win', 'chrome.exe')
-    if (fs.existsSync(winPath)) {
-      return winPath
-    }
-    
-    // Fallback - return chrome-win64 path (will fail with helpful error)
-    return win64Path
-  }
-  
-  // Unsupported platform - throw error to satisfy TypeScript return type
-  throw new Error(`Unsupported platform: ${process.platform}`)
-}
-
-const browsersPath = getBrowsersPath()
-const browserExecutablePath = getBrowserExecutablePath()
-
-// Debug logging for browser path resolution
-logger.info(`[recorder.ts] app.isPackaged: ${app.isPackaged}`)
-logger.info(`[recorder.ts] process.resourcesPath: ${process.resourcesPath}`)
-logger.info(`[recorder.ts] process.cwd(): ${process.cwd()}`)
-logger.info(`[recorder.ts] browsersPath: ${browsersPath}`)
-logger.info(`[recorder.ts] browserExecutablePath: ${browserExecutablePath}`)
-
 export class BrowserRecorder extends EventEmitter {
   private browser: Browser | null = null
   private page: Page | null = null
@@ -104,11 +30,23 @@ export class BrowserRecorder extends EventEmitter {
   private lastRecordedUrl: string | null = null
   /** Secure token generated at session start; required by widget IPC calls. */
   private sessionToken: string = ''
+  private readonly browsersPath: string
+  private readonly browserExecutablePath: string
 
   private state: RecorderState = RecorderState.IDLE
   
   private pauseStartedAt: number | null = null
   private pausedDurationMs: number = 0
+
+  constructor(browsersPath: string, browserExecutablePath: string) {
+    super()
+    this.browsersPath = browsersPath
+    this.browserExecutablePath = browserExecutablePath
+
+    logger.info(`[recorder.ts] process.cwd(): ${process.cwd()}`)
+    logger.info(`[recorder.ts] browsersPath: ${this.browsersPath}`)
+    logger.info(`[recorder.ts] browserExecutablePath: ${this.browserExecutablePath}`)
+  }
 
   private get isPaused(): boolean {
     return this.state === RecorderState.PAUSED
@@ -121,19 +59,19 @@ export class BrowserRecorder extends EventEmitter {
   private async checkBrowserInstalled(): Promise<boolean> {
     try {
       // Check if our manually constructed browser path exists
-      const exists = fs.existsSync(browserExecutablePath)
-      logger.info(`[checkBrowserInstalled] browserExecutablePath: ${browserExecutablePath}`)
+      const exists = fs.existsSync(this.browserExecutablePath)
+      logger.info(`[checkBrowserInstalled] browserExecutablePath: ${this.browserExecutablePath}`)
       logger.info(`[checkBrowserInstalled] fs.existsSync(browserExecutablePath): ${exists}`)
       
       // Also check if the browsers directory exists
-      const browsersDirExists = fs.existsSync(browsersPath)
-      logger.info(`[checkBrowserInstalled] browsersPath: ${browsersPath}`)
+      const browsersDirExists = fs.existsSync(this.browsersPath)
+      logger.info(`[checkBrowserInstalled] browsersPath: ${this.browsersPath}`)
       logger.info(`[checkBrowserInstalled] fs.existsSync(browsersPath): ${browsersDirExists}`)
       
       // List contents of browsers directory if it exists
       if (browsersDirExists) {
         try {
-          const contents = fs.readdirSync(browsersPath)
+          const contents = fs.readdirSync(this.browsersPath)
           logger.info(`[checkBrowserInstalled] browsersPath contents: ${contents.join(', ')}`)
         } catch (error) {
           logger.info(`[checkBrowserInstalled] Failed to read browsersPath: ${error instanceof Error ? error.message : String(error)}`)
@@ -171,16 +109,16 @@ export class BrowserRecorder extends EventEmitter {
     this.sessionToken = randomUUID()
 
     // Log the Playwright browsers path (set at module load time)
-    logger.info(`Playwright browsers path: ${browsersPath}`)
-    logger.info(`Browser executable path: ${browserExecutablePath}`)
+    logger.info(`Playwright browsers path: ${this.browsersPath}`)
+    logger.info(`Browser executable path: ${this.browserExecutablePath}`)
 
     // Check if Playwright browsers are installed
     const browserInstalled = await this.checkBrowserInstalled()
     if (!browserInstalled) {
       const errorMessage =
         'Playwright Chromium browser is not installed.\n\n' +
-        `Expected location: ${browserExecutablePath}\n\n` +
-        'This should have been bundled with the app. Please reinstall the application.'
+        `Expected location: ${this.browserExecutablePath}\n\n` +
+        'Run runtime setup to install browser dependencies.'
       logger.error('❌ Playwright browser not installed')
       logger.error(`❌ Browser path check failed. See debug logs above for details.`)
       throw new Error(errorMessage)
@@ -188,7 +126,7 @@ export class BrowserRecorder extends EventEmitter {
 
     this.browser = await chromium.launch({
       headless: false,
-      executablePath: browserExecutablePath,
+      executablePath: this.browserExecutablePath,
       args: [
         '--start-maximized',
         '--disable-dev-shm-usage',

@@ -46,22 +46,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-node-
 
-      - name: Cache Playwright browsers
-        uses: actions/cache@v4
-        with:
-          path: playwright-browsers
-          key: playwright-browsers-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
-          restore-keys: |
-            playwright-browsers-${{ runner.os }}-
-
       - name: Install dependencies
         run: npm ci
-
-      - name: Download Whisper model
-        shell: bash
-        run: |
-          mkdir -p models
-          curl -L -o models/ggml-small.en.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.en.bin
 
       - name: Import Code Signing Certificate
         shell: bash
@@ -131,32 +117,35 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-node-
 
-      - name: Cache Playwright browsers
-        uses: actions/cache@v4
-        with:
-          path: playwright-browsers
-          key: playwright-browsers-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
-          restore-keys: |
-            playwright-browsers-${{ runner.os }}-
-
       - name: Install dependencies
         run: npm ci
-
-      - name: Download Whisper model
-        shell: bash
-        run: |
-          mkdir -p models
-          curl -L -o models/ggml-small.en.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.en.bin
 
       - name: Build
         run: npm run build:prod
         shell: bash
+
+      - name: Prepare Windows runtime assets
+        if: github.event.inputs.release_tag != ''
+        shell: bash
+        run: |
+          npm run install:browsers
+          mkdir -p models
+          curl -L -o models/ggml-small.en.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.en.bin
+          node ./build/package-runtime-assets.js --platform win32-x64 --release-tag "${{ github.event.inputs.release_tag }}" --output release/runtime-assets/win32-x64
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: dodo-recorder-windows
           path: release/*.exe
+          retention-days: 30
+
+      - name: Upload runtime assets (Windows)
+        if: github.event.inputs.release_tag != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: dodo-runtime-assets-win32-x64
+          path: release/runtime-assets/win32-x64/*
           retention-days: 30
 
   upload-to-release:
@@ -187,6 +176,7 @@ jobs:
           files: |
             artifacts/dodo-recorder-macos-arm64/*
             artifacts/dodo-recorder-windows/*
+            artifacts/dodo-runtime-assets-win32-x64/*
           fail_on_unmatched_files: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

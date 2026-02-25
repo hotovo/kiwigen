@@ -13,6 +13,7 @@ import {
 import { distributeVoiceSegments, generateFullTranscript } from '../utils/voiceDistribution'
 import { getSettingsStore } from '../settings/store'
 import { logger } from '../utils/logger'
+import { runtimeDependencyManager } from '../runtime/dependency-manager'
 
 let browserRecorder: BrowserRecorder | null = null
 let transcriber: Transcriber | null = null
@@ -45,6 +46,10 @@ export function registerRecordingHandlers(mainWindow: BrowserWindow | null) {
       try {
         const settings = getSettingsStore()
         const whisperTimeout = settings.getWhisperTimeout()
+        const runtimePaths = await runtimeDependencyManager.resolvePaths()
+        if (!runtimePaths) {
+          throw new Error('Runtime dependencies are not installed yet. Complete setup and try again.')
+        }
         
         // Generate session ID for screenshot directory using the startTime from frontend
         // This ensures the screenshot directory matches the session directory created during save
@@ -55,9 +60,16 @@ export function registerRecordingHandlers(mainWindow: BrowserWindow | null) {
           .split('.')[0] // Remove milliseconds
         const screenshotDir = `${outputPath}/session-${sessionId}/screenshots`
         
-        browserRecorder = new BrowserRecorder()
+        browserRecorder = new BrowserRecorder(
+          runtimePaths.playwrightBrowsersPath,
+          runtimePaths.playwrightExecutablePath
+        )
         sessionWriter = new SessionWriter(outputPath)
-        transcriber = new Transcriber(whisperTimeout)
+        transcriber = new Transcriber(
+          runtimePaths.whisperModelPath,
+          runtimePaths.whisperBinaryPath,
+          whisperTimeout
+        )
 
         browserRecorder.on('action', (action) => {
           // Check if window and webContents are still valid before sending
@@ -168,7 +180,15 @@ export function registerRecordingHandlers(mainWindow: BrowserWindow | null) {
       if (!transcriber) {
         const settings = getSettingsStore()
         const whisperTimeout = settings.getWhisperTimeout()
-        transcriber = new Transcriber(whisperTimeout)
+        const runtimePaths = await runtimeDependencyManager.resolvePaths()
+        if (!runtimePaths) {
+          throw new Error('Runtime dependencies are not installed yet. Complete setup and try again.')
+        }
+        transcriber = new Transcriber(
+          runtimePaths.whisperModelPath,
+          runtimePaths.whisperBinaryPath,
+          whisperTimeout
+        )
         await transcriber.initialize()
       }
       const segments = await transcriber.transcribe(Buffer.from(audioBuffer))

@@ -11,12 +11,14 @@ This document describes how to build Dodo Recorder for local testing and product
 - [Development Mode](#development-mode)
 - [Local Test Build](#local-test-build)
 - [Production Build](#production-build)
+- [Runtime Asset Release Pipeline](#runtime-asset-release-pipeline)
 - [Creating a Release Tag](#creating-a-release-tag)
 - [Build Scripts](#build-scripts)
 - [Build Configuration](#build-configuration)
 - [Environment Variables](#environment-variables)
 - [CI/CD Pipeline](#cicd-pipeline)
 - [Build Artifacts](#build-artifacts)
+- [Runtime Release Checklist](#runtime-release-checklist)
 - [Troubleshooting](#troubleshooting)
 
 ---
@@ -29,56 +31,22 @@ Before building Dodo Recorder, ensure you have:
 - **Git**
 - **macOS Apple Silicon** or **Windows x64**
 
-### Required Files
+### Runtime Dependencies (First Launch)
 
-The build process requires these files to be present:
+Production installers no longer bundle Whisper model/binaries or Playwright Chromium.
+The app downloads required runtime dependencies on first launch into the user data directory.
 
-| File | Purpose | Source |
-|------|---------|--------|
-| `models/ggml-small.en.bin` | Whisper AI model (466 MB) | Download manually (see [Whisper Model Setup](#whisper-model-setup)) |
-| `models/unix/whisper` | Whisper binary (macOS) | Committed to git |
-| `models/win/whisper-cli.exe` | Whisper binary (Windows) | Committed to git |
-| `playwright-browsers/` | Playwright Chromium browser | Auto-installed via postinstall script |
-
-### Whisper Model Setup
-
-The Whisper model file (466 MB) is not in the repository. Download it once:
-
-**macOS:**
-```bash
-curl -L -o models/ggml-small.en.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.en.bin
-```
-
-**Windows (PowerShell):**
-```powershell
-curl.exe -L -o models/ggml-small.en.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.en.bin
-```
-
-### Playwright Browsers
-
-Playwright browsers are automatically installed to the `playwright-browsers/` directory during `npm install` via a postinstall script. If you need to reinstall them manually:
-
-```bash
-npm run install:browsers
-```
-
-This runs `build/install-playwright-browsers.js`, which:
-- Creates the `playwright-browsers/` directory
-- Installs Chromium for the current platform
-- The browser is bundled with the final app via `extraResources`
+In transition builds, the app can also import legacy bundled assets (if present) into the new runtime directory.
 
 ---
 
 ## Quick Start
 
 ```bash
-# 1. Install dependencies (auto-installs Playwright browsers)
+# 1. Install dependencies
 npm install
 
-# 2. Download Whisper model
-curl -L -o models/ggml-small.en.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.en.bin
-
-# 3. Run in development mode
+# 2. Run in development mode
 npm run dev
 ```
 
@@ -145,6 +113,98 @@ npm run build:prod
 **Platform support:** macOS ARM64, Windows x64
 
 **Signing:** Full code signing and notarization (macOS), no signing (Windows)
+
+---
+
+## Runtime Asset Release Pipeline
+
+Runtime dependencies are published as GitHub release assets and downloaded on first launch.
+
+### Asset naming and manifest
+
+Each release should include:
+
+- `dodo-runtime-whisper-model-small.en.bin`
+- `dodo-runtime-whisper-binary-darwin-arm64`
+- `dodo-runtime-whisper-binary-win32-x64.exe`
+- `dodo-runtime-playwright-darwin-arm64-<chromium-version>.zip`
+- `dodo-runtime-playwright-win32-x64-<chromium-version>.zip`
+- `runtime-manifest.json`
+
+### macOS local flow (maintainer)
+
+1. Prepare local runtime inputs:
+   - Ensure `models/unix/whisper` exists
+   - Ensure `models/ggml-small.en.bin` exists
+   - Ensure Chromium is installed locally: `npm run install:browsers`
+2. Package macOS runtime assets:
+
+```bash
+node ./build/package-runtime-assets.js \
+  --platform darwin-arm64 \
+  --release-tag v0.4.0 \
+  --output release/runtime-assets/darwin-arm64
+```
+
+This outputs mac runtime files + `asset-metadata.darwin-arm64.json`.
+
+### Windows CI flow
+
+When `release_tag` is provided in GitHub Actions (`Build Dodo Recorder` workflow), the Windows job also:
+
+1. Installs Chromium runtime (`npm run install:browsers`)
+2. Downloads Whisper model
+3. Packages Windows runtime assets
+4. Uploads artifact `dodo-runtime-assets-win32-x64`
+
+If `upload-to-release` runs, Windows runtime asset files are attached to that GitHub Release automatically.
+
+### Generate combined runtime manifest (local)
+
+After you have:
+
+- local mac runtime metadata in `release/runtime-assets/darwin-arm64/`
+- Windows metadata downloaded from CI artifact (place under `release/runtime-assets/win32-x64/`)
+
+Generate manifest:
+
+```bash
+node ./build/generate-runtime-manifest.js \
+  --metadata-dir release/runtime-assets \
+  --output release/runtime-assets/runtime-manifest.json
+```
+
+Verify manifest:
+
+```bash
+node ./build/verify-runtime-manifest.js \
+  --manifest release/runtime-assets/runtime-manifest.json
+
+# Optional: verify URLs after uploading assets
+node ./build/verify-runtime-manifest.js \
+  --manifest release/runtime-assets/runtime-manifest.json \
+  --check-urls true
+```
+
+Upload `runtime-manifest.json` to the same GitHub Release as the runtime assets.
+
+### Runtime manifest resolution in app
+
+At startup, the app tries to fetch:
+
+`https://github.com/dodosaurus/dodo-recorder/releases/download/v<app-version>/runtime-manifest.json`
+
+You can override this for testing with:
+
+- `DODO_RUNTIME_MANIFEST_URL`
+
+If remote fetch fails, the app falls back to bundled manifest defaults.
+
+---
+
+## Runtime Release Checklist
+
+For the quick release sequence, use [`runtime_release_checklist.md`](runtime_release_checklist.md).
 
 ---
 
@@ -224,11 +284,11 @@ Runs `build/build-prod.js` for production builds.
 
 ### `npm run install:browsers`
 
-Manually installs Playwright browsers to `playwright-browsers/`.
+Installs Playwright browsers to `playwright-browsers/` for runtime asset preparation.
 
 ### `npm run postinstall` (automatic)
 
-Runs automatically after `npm install`. Calls `build/install-playwright-browsers.js`.
+Prints a no-op message. Runtime dependencies are handled by in-app setup.
 
 ### `npm run generate-icons`
 
@@ -287,13 +347,10 @@ Used for production releases with full signing and notarization.
 ```
 
 **Extra Resources (bundled with app):**
-- `models/` - Whisper binaries and AI model
 - `node_modules/ffmpeg-static` - FFmpeg binaries
-- `playwright-browsers/` - Playwright Chromium browser
 
 **ASAR Unpack:**
 - `**/*.node` - Native Node.js modules
-- `resources/playwright-browsers/**/*` - Playwright browsers
 
 ---
 
@@ -376,12 +433,10 @@ Runs on `macos-latest`:
 1. **Checkout code** - Checks out the specified branch or tag
 2. **Setup Node.js 18** - Uses `actions/setup-node@v4`
 3. **Cache npm dependencies** - Caches `~/.npm` based on `package-lock.json`
-4. **Cache Playwright browsers** - Caches `playwright-browsers/` directory
-5. **Install dependencies** - Runs `npm ci`
-6. **Download Whisper model** - Downloads from Hugging Face to `models/`
-7. **Import Code Signing Certificate** - Decodes base64 certificate from secrets and imports to keychain
-8. **Build** - Runs `npm run build:prod` with environment variables
-9. **Upload artifacts** - Uploads `.dmg` and `.zip` files (30-day retention)
+4. **Install dependencies** - Runs `npm ci`
+5. **Import Code Signing Certificate** - Decodes base64 certificate from secrets and imports to keychain
+6. **Build** - Runs `npm run build:prod` with environment variables
+7. **Upload artifacts** - Uploads `.dmg` and `.zip` files (30-day retention)
 
 #### `build-windows`
 
@@ -390,11 +445,9 @@ Runs on `windows-latest`:
 1. **Checkout code** - Checks out the specified branch or tag
 2. **Setup Node.js 18** - Uses `actions/setup-node@v4`
 3. **Cache npm dependencies** - Caches npm based on `package-lock.json`
-4. **Cache Playwright browsers** - Caches `playwright-browsers/` directory
-5. **Install dependencies** - Runs `npm ci`
-6. **Download Whisper model** - Downloads from Hugging Face to `models/`
-7. **Build** - Runs `npm run build:prod`
-8. **Upload artifacts** - Uploads `.exe` file (30-day retention)
+4. **Install dependencies** - Runs `npm ci`
+5. **Build** - Runs `npm run build:prod`
+6. **Upload artifacts** - Uploads `.exe` file (30-day retention)
 
 #### `upload-to-release`
 
@@ -445,30 +498,15 @@ Artifacts are retained for 30 days in the GitHub Actions tab. If a `release_tag`
 
 ## Troubleshooting
 
-### "Whisper model not found" Error
+### "Runtime dependency install failed" Error
 
-**Problem:** App can't find `models/ggml-small.en.bin`
-
-**Solution:**
-
-**macOS:**
-```bash
-curl -L -o models/ggml-small.en.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.en.bin
-```
-
-**Windows (PowerShell):**
-```powershell
-curl.exe -L -o models/ggml-small.en.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.en.bin
-```
-
-### "Playwright browser not installed" Error
-
-**Problem:** Playwright Chromium browser not found
+**Problem:** App cannot download or verify runtime dependencies.
 
 **Solution:**
-```bash
-npm run install:browsers
-```
+1. Confirm network access to GitHub release assets
+2. Re-run setup from the first-launch setup screen
+3. Verify free disk space in the user data location
+4. Check logs (`main.log`) for the failing artifact and checksum details
 
 ### macOS Code Signing Fails
 
@@ -549,8 +587,8 @@ stapler validate release/mac-arm64/Dodo\ Recorder.app
 
 **Solutions:**
 
-1. **Check caching is working** - npm and Playwright browsers should be cached
-2. **Verify Whisper download not timing out** - Check network connectivity
+1. **Check caching is working** - npm cache should be reused
+2. **Verify runtime setup download connectivity** - first launch requires GitHub asset access
 3. **Increase timeout in workflow file** (if needed)
 
 ### Windows Build Issues

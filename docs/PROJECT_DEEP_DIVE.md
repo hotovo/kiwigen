@@ -197,7 +197,7 @@ mainWindow.webContents.send('audio-activity-updated', { isActive })
 | **Electron** | Desktop app framework | 28.0.0 |
 | **Node.js** | Runtime (required 18+) | - |
 | **Playwright** | Browser automation | 1.40.0 |
-| **Whisper.cpp** | Local speech-to-text | (bundled binaries) |
+| **Whisper.cpp** | Local speech-to-text | (runtime-downloaded binaries) |
 | **ffmpeg-static** | Audio processing | 5.3.0 |
 | **electron-log** | Production logging | 5.4.3 |
 | **uuid** | Unique ID generation | 9.0.1 |
@@ -229,7 +229,7 @@ mainWindow.webContents.send('audio-activity-updated', { isActive })
 - Initializes settings and microphone permissions
 - Registers all IPC handlers via `registerAllHandlers()`
 - Cleans up temporary files on startup
-- Checks for Whisper components (binary + model) on startup
+- Initializes runtime dependency manager and setup state
 - Logs startup information
 
 **Key Implementation Details:**
@@ -3046,36 +3046,29 @@ CSC_KEY_PASSWORD=your-p12-password
 - `models/unix/whisper` (macOS ARM64)
 - `models/win/whisper-cli.exe` (Windows x64)
 
-**Whisper Model (downloaded manually):**
-- `models/ggml-small.en.bin` (466 MB)
-
-**Download Command:**
-```bash
-curl -L -o models/ggml-small.en.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.en.bin
-```
-
-**Why Model Not in Git:**
-- 466 MB too large for git repositories
-- Downloaded once per machine
-- Persists across npm installs
+**Whisper Model (runtime dependency):**
+- Delivered as release asset on first launch
+- Stored in user runtime directory (`runtime-deps/models/ggml-small.en.bin`)
+- Verified with SHA256 before use
 
 ---
 
 ### Playwright Browsers
 
-**Auto-Installed via postinstall:**
-```bash
-npm install  # Runs build/install-playwright-browsers.js
-```
+**Runtime install:**
+- Chromium is no longer bundled with app installers
+- Installed on first launch from release assets
+- Stored in `runtime-deps/playwright-browsers/`
 
 **Manual Install:**
 ```bash
 npm run install:browsers
 ```
 
-**Location:** `playwright-browsers/` directory
-
-**Bundled:** Included in app via `extraResources` in electron-builder config
+**Release pipeline:**
+- macOS runtime assets are packaged locally
+- Windows runtime assets are packaged in CI
+- Both are referenced by `runtime-manifest.json`
 
 ---
 

@@ -39,29 +39,14 @@
   },
   "extraResources": [
     {
-      "from": "models",
-      "to": "models",
-      "filter": [
-        "**/*"
-      ]
-    },
-    {
       "from": "node_modules/ffmpeg-static",
       "to": "ffmpeg-static",
       "filter": [
         "ffmpeg*"
       ]
-    },
-    {
-      "from": "playwright-browsers",
-      "to": "playwright-browsers",
-      "filter": [
-        "**/*"
-      ]
     }
   ],
   "asarUnpack": [
-    "**/*.node",
-    "resources/playwright-browsers/**/*"
+    "**/*.node"
   ]
 }
