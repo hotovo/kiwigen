@@ -87,7 +87,7 @@ session-YYYY-MM-DD-HHMMSS/
 
 ## 🛠️ Development Setup
 
-For detailed build instructions, see [`docs/building.md`](docs/building.md).
+For detailed build and development instructions, see [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md).
 
 ### Quick Start
 
@@ -107,21 +107,28 @@ Runtime dependencies (Whisper + Chromium) are now installed by the app on first 
 
 ```
 dodo-recorder/
-├── models/                          # Whisper components
+├── models/                          # Whisper components (source for release packaging)
 │   ├── unix/                       # Unix binary (macOS)
 │   │   └── whisper                # Whisper.cpp binary (committed)
 │   ├── win/                        # Windows binaries
 │   │   └── whisper-cli.exe         # Whisper.cpp binary (committed)
-│   └── ggml-small.en.bin          # AI model (download manually)
+│   └── ggml-small.en.bin          # AI model (download manually for development)
 ├── electron/                        # Electron main process
 │   ├── main.ts                     # Entry point
 │   ├── browser/                    # Playwright recording
 │   ├── audio/                      # Audio & transcription
-│   └── session/                    # Session management
+│   ├── runtime/                     # Runtime dependency management
+│   ├── session/                    # Session management
+│   ├── ipc/                        # IPC handlers
+│   ├── settings/                    # Settings persistence
+│   └── utils/                      # Filesystem, validation, logging
 ├── src/                             # React renderer process
 │   ├── components/                 # UI components
 │   ├── stores/                     # Zustand state management
+│   ├── hooks/                      # Custom React hooks
+│   ├── lib/                        # Utilities and settings
 │   └── types/                      # TypeScript types
+├── shared/                          # Shared types and constants
 └── docs/                            # Documentation
 ```
 
@@ -135,7 +142,7 @@ Found a bug or have a feature request? Please open an issue on [GitHub Issues](h
 
 ## 🔧 Troubleshooting
 
-For comprehensive troubleshooting guides, see [`docs/building.md`](docs/building.md) and [`docs/logs_and_debugging.md`](docs/logs_and_debugging.md).
+For comprehensive troubleshooting guides, see [`docs/USER_GUIDE.md`](docs/USER_GUIDE.md#troubleshooting).
 
 ### Common Issues
 
@@ -148,7 +155,7 @@ For comprehensive troubleshooting guides, see [`docs/building.md`](docs/building
 
 - **Console logs**: Visible in terminal when running `npm run dev`
 - **DevTools**: Press `Cmd+Option+I` (Mac) or `Ctrl+Shift+I` (Windows) to open browser DevTools
-- **Log files** (production builds): See [`docs/logs_and_debugging.md`](docs/logs_and_debugging.md)
+- **Log files** (production builds): See [`docs/USER_GUIDE.md`](docs/USER_GUIDE.md#troubleshooting)
 
 ---
 
@@ -173,13 +180,8 @@ A: No. All transcription happens locally using Whisper.cpp. Your voice recording
 
 ## 📚 Documentation
 
-- **[User Guide](docs/user_guide.md)**: Complete feature documentation, keyboard shortcuts, and output format details
-- **[Architecture](docs/architecture.md)**: System design, data flow, and technical implementation
-- **[Code Signing](docs/code_signing.md)**: macOS code signing setup and configuration
-- **[Voice Transcription](docs/voice_transcription.md)**: Deep dive into the local transcription system
-- **[Output Format](docs/output_format.md)**: Detailed explanation of session bundle structure
-- **[Logging and Debugging](docs/logs_and_debugging.md)**: How to access logs and debug issues
-- **[Runtime Release Checklist](docs/runtime_release_checklist.md)**: Quick release steps for runtime dependency assets
+- **[User Guide](docs/USER_GUIDE.md)**: Complete user-facing documentation for using Dodo Recorder
+- **[Development Guide](docs/DEVELOPMENT.md)**: Comprehensive implementation guide for developers and AI agents working on the codebase
 - **[Agent Guidelines](AGENTS.md)**: Coding standards and guidelines for AI agents (for reference)
 
 ---
