@@ -13,6 +13,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [0.4.0] - 2026-02-25
+
+### Added
+
+**New Features:**
+- 📦 Runtime dependency bundling - Whisper model, Whisper binaries, and Playwright browsers are now downloaded on first launch instead of being bundled
+- 🚀 First launch setup screen - dedicated UI for downloading and installing runtime dependencies with progress tracking
+- 🔧 Runtime dependency manager - new system for managing, verifying, and updating runtime dependencies with checksum validation
+- 📋 Runtime manifest system - declarative specification of platform-specific runtime artifacts
+- 🛠️ Runtime asset packaging scripts - build tools for bundling runtime assets into distributable packages
+- 📊 Runtime status tracking - real-time status monitoring of dependency installation state
+
+**Technical Enhancements:**
+- Dependency validation with SHA-256 checksums - ensures downloaded artifacts match expected hashes
+- Platform-aware dependency resolution - correct artifacts for macOS ARM64 and Windows x64
+- Install state persistence - tracks installed dependencies across app restarts
+- Cancellation support - ability to cancel in-progress dependency downloads
+- Legacy asset migration - seamless migration from bundled to runtime-managed dependencies
+- IPC runtime management - dedicated IPC handlers for dependency status and installation
+
+**Documentation:**
+- 📘 Consolidated development documentation - merged multiple docs into single `docs/DEVELOPMENT.md` file
+- 📖 Enhanced user guide - expanded user guide with runtime setup instructions
+- 🔄 Updated architecture documentation - revised to reflect runtime dependency system
+- 📝 Runtime release checklist - new guide for preparing runtime asset releases
+- 🛠️ Updated build documentation - revised build docs for new runtime packaging
+
 ## [0.3.1] - 2026-02-25
 
 ### Added
@@ -164,7 +191,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Build info generation for release tracking
 - Playwright browser bundling improvements
 
-[Unreleased]: https://github.com/dodosaurus/dodo-recorder/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/dodosaurus/dodo-recorder/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/dodosaurus/dodo-recorder/releases/tag/v0.4.0
 [0.3.1]: https://github.com/dodosaurus/dodo-recorder/releases/tag/v0.3.1
 [0.3.0]: https://github.com/dodosaurus/dodo-recorder/releases/tag/v0.3.0
 [0.2.0]: https://github.com/dodosaurus/dodo-recorder/releases/tag/v0.2.0
