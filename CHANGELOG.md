@@ -13,6 +13,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [0.3.1] - 2026-02-25
+
+### Added
+
+**Documentation:**
+- 🤖 Added `AGENTS.md` with repository context, guardrails, commands, and architecture notes
+- 📘 Expanded deep-dive project documentation and planning notes in `docs/PROJECT_DEEP_DIVE.md`
+
+### Changed
+
+**Architecture & Refactoring:**
+- Refactored renderer audio capture into a dedicated `useAudioRecorder` hook for cleaner lifecycle handling
+- Centralized shared limits/audio config in `shared/constants.ts` and browser context typings in `shared/browser-context.ts`
+- Simplified `RecordingControls` by moving MediaRecorder/device fallback logic into reusable hook utilities
+
+### Fixed
+
+**Security & Reliability:**
+- 🔒 Hardened browser widget pause/resume bridge with per-session token validation for exposed browser functions
+- 🎤 Improved microphone device handling by filtering alias/virtual devices and deduplicating physical inputs
+- Added safer microphone fallback behavior when a previously selected device is no longer available
+
 ## [0.3.0] - 2026-02-09
 
 ### Added
@@ -142,7 +164,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Build info generation for release tracking
 - Playwright browser bundling improvements
 
-[Unreleased]: https://github.com/dodosaurus/dodo-recorder/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/dodosaurus/dodo-recorder/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/dodosaurus/dodo-recorder/releases/tag/v0.3.1
 [0.3.0]: https://github.com/dodosaurus/dodo-recorder/releases/tag/v0.3.0
 [0.2.0]: https://github.com/dodosaurus/dodo-recorder/releases/tag/v0.2.0
 [0.1.0]: https://github.com/dodosaurus/dodo-recorder/releases/tag/v0.1.0

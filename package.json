@@ -1,6 +1,6 @@
 {
   "name": "dodo-recorder",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Record browser interactions and voice commentary for AI-assisted automated test generation",
   "main": "dist-electron/main.js",
   "scripts": {
