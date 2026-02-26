@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button'
 import type { RuntimeDependencyStatus, RuntimeInstallProgress } from '../../shared/types'
-import { AlertCircle, CheckCircle2, Download, Loader2, XCircle } from 'lucide-react'
+import { AlertCircle, CheckCircle2, Download } from 'lucide-react'
 
 interface RuntimeSetupGateProps {
   status: RuntimeDependencyStatus | null
@@ -46,23 +46,8 @@ export function RuntimeSetupGate({
                   className="flex items-center justify-between rounded-md border border-border px-3 py-2 bg-background/70"
                 >
                   <div className="text-sm text-foreground">{dependency.id}</div>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    {dependency.ready ? (
-                      <>
-                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
-                        <span>Ready</span>
-                      </>
-                    ) : status?.state === 'error' ? (
-                      <>
-                        <XCircle className="h-3.5 w-3.5 text-red-400" />
-                        <span>Missing</span>
-                      </>
-                    ) : (
-                      <>
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        <span>Pending</span>
-                      </>
-                    )}
+                  <div className="flex h-4 w-4 items-center justify-center">
+                    {dependency.ready ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" /> : null}
                   </div>
                 </div>
               ))}
