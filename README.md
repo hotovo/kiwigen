@@ -103,6 +103,21 @@ npm run dev
 
 Runtime dependencies (Whisper + Chromium) are now installed by the app on first launch.
 
+### First-Launch Runtime Download
+
+On first startup, the app installs required runtime dependencies from GitHub Release assets for the current app version:
+
+- **Whisper model** (`ggml-small.en.bin`, ~466 MB)
+- **Whisper binary** (platform-specific executable)
+- **Playwright Chromium runtime** (platform-specific browser archive)
+
+**Why this is done on first launch (instead of bundling):**
+- Smaller app installers and faster downloads
+- Runtime assets can be updated per release without inflating packaged binaries
+- Deterministic setup with checksum verification before use
+
+The dependencies are installed once per user profile and reused between launches until a newer runtime version is required.
+
 ### Project Structure
 
 ```
@@ -161,14 +176,17 @@ For comprehensive troubleshooting guides, see [`docs/USER_GUIDE.md`](docs/USER_G
 
 ## ❓ FAQ
 
-**Q: Why is the model not in git?**
-A: It's large and now delivered as a first-launch runtime download from release assets.
+**Q: What exactly is downloaded on first startup?**
+A: Three runtime artifacts: Whisper model (`ggml-small.en.bin`), platform-specific Whisper binary, and platform-specific Playwright Chromium archive.
+
+**Q: Why are these dependencies downloaded after install instead of bundled?**
+A: To keep installers smaller, speed up distribution, and let runtime assets be versioned and updated per release while still being verified with SHA256 checksums.
 
 **Q: Can I use a different Whisper model?**
 A: The app is hard-coded to use `small.en` for consistency and performance.
 
-**Q: Do I need to download runtime dependencies for every clone of repository?**
-A: No. They install once per machine/user profile and are reused between launches until version changes.
+**Q: Do I need to download runtime dependencies on every app launch?**
+A: No. They install once per machine/user profile and are reused between launches until the runtime version changes.
 
 **Q: Does this work with frameworks other than Playwright?**
 A: Yes! The session output is framework-agnostic. AI agents can generate tests for Playwright, Cypress, Selenium, Puppeteer, or any other framework.
