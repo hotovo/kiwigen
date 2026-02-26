@@ -1727,6 +1727,39 @@ stapler validate release/mac-arm64/Dodo\ Recorder.app
 - `APPLE_APP_SPECIFIC_PASSWORD` - App-specific password
 - `APPLE_TEAM_ID` - Apple Developer Team ID
 
+### Testing Runtime Dependency Downloads (macOS)
+
+To simulate a fresh install and verify that dependency downloading works correctly:
+
+**1. Quit the app** (Cmd+Q).
+
+**2. Delete the entire runtime-deps directory:**
+```bash
+rm -rf ~/Library/Application\ Support/dodo-recorder/runtime-deps
+```
+This removes all managed assets and the `install-state.json` tracking file.
+
+**3. Relaunch the app:**
+```bash
+open /Applications/Dodo\ Recorder.app
+```
+On startup, `initialize()` recreates the directory, loads the remote manifest (falls back to bundled), and `refreshStatus()` returns `needs_install`. The `RuntimeSetupGate` UI blocks all recorder controls.
+
+**4. Click "Install Runtime Dependencies"** to trigger the download → verify → extract flow.
+
+**Monitor progress in real-time:**
+```bash
+tail -f ~/Library/Logs/dodo-recorder/main.log
+```
+Expected log entries: `[runtime] downloading:*` → `[runtime] verifying:*` → `[runtime] extracting:*` → `[runtime] done`
+
+**To reset only one artifact** (e.g. just the Whisper model):
+```bash
+rm ~/Library/Application\ Support/dodo-recorder/runtime-deps/models/ggml-small.en.bin
+rm ~/Library/Application\ Support/dodo-recorder/runtime-deps/install-state.json
+```
+The `installAll()` loop skips artifacts where the file exists **and** the stored version matches the manifest — deleting `install-state.json` alone forces a full re-verification pass.
+
 ---
 
 ## Debugging & Logging
