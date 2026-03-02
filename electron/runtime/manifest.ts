@@ -65,10 +65,10 @@ export const runtimeManifest: RuntimeManifest = {
         {
           id: 'whisper-binary',
           version: 'whispercpp-0.4.0',
-          url: `${RELEASE_BASE}/dodo-runtime-whisper-binary-win32-x64.exe`,
-          sha256: '0ff971e410240a0b97117432d771245698f376e06105c011959d2bfc4bb23311',
-          type: 'file',
-          targetPath: 'models/win/whisper-cli.exe',
+          url: `${RELEASE_BASE}/dodo-runtime-whisper-binary-win32-x64.zip`,
+          sha256: 'PLACEHOLDER_UPDATE_AFTER_PACKAGING',
+          type: 'zip',
+          targetPath: 'models/win',
         },
         {
           id: 'playwright-chromium',

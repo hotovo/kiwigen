@@ -92,6 +92,43 @@ function artifactUrl(repo, releaseTag, fileName) {
   return `https://github.com/${repo}/releases/download/${releaseTag}/${fileName}`;
 }
 
+const WHISPER_WIN_DLLS = [
+  'whisper.dll',
+  'ggml.dll',
+  'ggml-cpu.dll',
+  'ggml-base.dll',
+  'SDL2.dll',
+];
+
+function packageWhisperWin32({ modelsWinDir, outputDir, binaryFileName }) {
+  const tempDir = path.join(outputDir, '.tmp-whisper-win');
+  ensureDir(tempDir);
+
+  const exeSource = path.join(modelsWinDir, 'whisper-cli.exe');
+  ensureExists(exeSource, 'Whisper CLI executable');
+
+  copyFile(exeSource, path.join(tempDir, 'whisper-cli.exe'));
+
+  WHISPER_WIN_DLLS.forEach((dllName) => {
+    const dllSource = path.join(modelsWinDir, dllName);
+    if (fs.existsSync(dllSource)) {
+      copyFile(dllSource, path.join(tempDir, dllName));
+    } else {
+      console.warn(`Warning: ${dllName} not found in ${modelsWinDir}, skipping`);
+    }
+  });
+
+  const zipPath = path.join(outputDir, binaryFileName);
+  const escapedSource = tempDir.replace(/'/g, "''");
+  const escapedDestination = zipPath.replace(/'/g, "''");
+  const command = `Compress-Archive -Path '${escapedSource}\\*' -DestinationPath '${escapedDestination}' -Force`;
+  execSync(`powershell -NoProfile -Command "${command}"`, { stdio: 'inherit' });
+
+  fs.rmSync(tempDir, { recursive: true, force: true });
+
+  return zipPath;
+}
+
 function main() {
   const args = parseArgs(process.argv.slice(2));
   const platform = args.platform;
@@ -124,7 +161,7 @@ function main() {
   const modelFileName = 'dodo-runtime-whisper-model-small.en.bin';
   const binaryFileName = platform === 'darwin-arm64'
     ? 'dodo-runtime-whisper-binary-darwin-arm64'
-    : 'dodo-runtime-whisper-binary-win32-x64.exe';
+    : 'dodo-runtime-whisper-binary-win32-x64.zip';
   const chromiumZipFileName = `dodo-runtime-playwright-${platform}-${chromiumFolderName}.zip`;
 
   const modelOutputPath = path.join(outputDir, modelFileName);
@@ -132,7 +169,17 @@ function main() {
   const chromiumZipOutputPath = path.join(outputDir, chromiumZipFileName);
 
   copyFile(modelPath, modelOutputPath);
-  copyFile(whisperBinarySource, binaryOutputPath);
+
+  if (platform === 'win32-x64') {
+    packageWhisperWin32({
+      modelsWinDir: path.resolve(path.join('models', 'win')),
+      outputDir,
+      binaryFileName,
+    });
+  } else {
+    copyFile(whisperBinarySource, binaryOutputPath);
+  }
+
   zipChromium({
     platform,
     playwrightDir,
@@ -161,8 +208,8 @@ function main() {
         version: `whispercpp-${versionSuffix}`,
         url: artifactUrl(repo, releaseTag, binaryFileName),
         sha256: sha256File(binaryOutputPath),
-        type: 'file',
-        targetPath: platform === 'darwin-arm64' ? 'models/unix/whisper' : 'models/win/whisper-cli.exe',
+        type: platform === 'darwin-arm64' ? 'file' : 'zip',
+        targetPath: platform === 'darwin-arm64' ? 'models/unix/whisper' : 'models/win',
         executable: platform === 'darwin-arm64',
         fileName: binaryFileName,
         size: fileSize(binaryOutputPath),

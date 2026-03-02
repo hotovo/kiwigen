@@ -43,7 +43,7 @@ Expected output in `release/runtime-assets/darwin-arm64`:
 
 Expected output in `release/runtime-assets/win32-x64`:
 - `dodo-runtime-whisper-model-small.en.bin`
-- `dodo-runtime-whisper-binary-win32-x64.exe`
+- `dodo-runtime-whisper-binary-win32-x64.zip`
 - `dodo-runtime-playwright-win32-x64-chromium-*.zip`
 - `asset-metadata.win32-x64.json`
 
@@ -88,7 +88,7 @@ Required release assets:
 - [ ] `runtime-manifest.json`
 - [ ] `dodo-runtime-whisper-model-small.en.bin` (upload once)
 - [ ] `dodo-runtime-whisper-binary-darwin-arm64`
-- [ ] `dodo-runtime-whisper-binary-win32-x64.exe`
+- [ ] `dodo-runtime-whisper-binary-win32-x64.zip` (includes exe + DLLs)
 - [ ] `dodo-runtime-playwright-darwin-arm64-chromium-*.zip`
 - [ ] `dodo-runtime-playwright-win32-x64-chromium-*.zip`
 
@@ -99,7 +99,7 @@ gh release upload vX.Y.Z \
   release/runtime-assets/runtime-manifest.json \
   release/runtime-assets/darwin-arm64/dodo-runtime-whisper-model-small.en.bin \
   release/runtime-assets/darwin-arm64/dodo-runtime-whisper-binary-darwin-arm64 \
-  release/runtime-assets/win32-x64/dodo-runtime-whisper-binary-win32-x64.exe \
+  release/runtime-assets/win32-x64/dodo-runtime-whisper-binary-win32-x64.zip \
   release/runtime-assets/darwin-arm64/dodo-runtime-playwright-darwin-arm64-chromium-*.zip \
   release/runtime-assets/win32-x64/dodo-runtime-playwright-win32-x64-chromium-*.zip \
   --clobber
