@@ -1644,39 +1644,28 @@ npx tsc -p tsconfig.node.json
 
 ### Runtime Dependency Preparation (for releases)
 
-**macOS local flow:**
+Release runtime assets are generated in CI on every published release.
+
+**Release flow:**
+1. Commit and push desired source changes.
+2. Create and push tag `vX.Y.Z` that matches `package.json` version.
+3. Publish a GitHub Release for that tag.
+
+When the release is published, CI automatically:
+- builds macOS and Windows installers,
+- packages runtime assets on both platforms,
+- generates `runtime-manifest.json` from both metadata files,
+- verifies manifest structure,
+- uploads installers + runtime assets + manifest to that release,
+- validates manifest URLs with retries.
+
+Manual scripts remain available for local diagnostics only:
+
 ```bash
-# 1. Prepare local runtime inputs
-npm run install:browsers
-
-# 2. Package macOS runtime assets
-node ./build/package-runtime-assets.js \
-  --platform darwin-arm64 \
-  --release-tag v0.4.0 \
-  --output release/runtime-assets/darwin-arm64
-```
-
-**Windows CI flow:**
-- Trigger `Build Dodo Recorder` with `release_tag=vX.Y.Z`
-- Windows job installs Chromium runtime and packages Windows runtime assets
-- Uploads artifact `dodo-runtime-assets-win32-x64`
-
-**Generate combined manifest:**
-```bash
-node ./build/generate-runtime-manifest.js \
-  --metadata-dir release/runtime-assets \
-  --output release/runtime-assets/runtime-manifest.json
-```
-
-**Verify manifest:**
-```bash
-node ./build/verify-runtime-manifest.js \
-  --manifest release/runtime-assets/runtime-manifest.json
-
-# After uploading assets to GitHub Release, validate URLs:
-node ./build/verify-runtime-manifest.js \
-  --manifest release/runtime-assets/runtime-manifest.json \
-  --check-urls true
+node ./build/package-runtime-assets.js --platform darwin-arm64 --release-tag vX.Y.Z
+node ./build/package-runtime-assets.js --platform win32-x64 --release-tag vX.Y.Z
+node ./build/generate-runtime-manifest.js --metadata-dir release/runtime-assets
+node ./build/verify-runtime-manifest.js --manifest release/runtime-assets/runtime-manifest.json
 ```
 
 ### Code Signing & Notarization (macOS)
@@ -1713,12 +1702,16 @@ stapler validate release/mac-arm64/Dodo\ Recorder.app
 
 **GitHub Actions workflow** (`.github/workflows/build.yml`):
 
-**Trigger:** Manual only via GitHub Actions UI
+**Primary trigger:** GitHub Release `published`
+
+**Fallback trigger:** Manual `workflow_dispatch` with required `release_tag` input
 
 **Jobs:**
-1. **`build-macos-arm64`** - Runs on macOS, builds signed/notarized app
-2. **`build-windows`** - Runs on Windows, builds NSIS installer + portable exe
-3. **`upload-to-release`** - Attaches artifacts to GitHub Release (if `release_tag` provided)
+1. **`prepare`** - Resolves and validates release tag
+2. **`build-macos-arm64`** - Builds signed/notarized macOS app + macOS runtime assets
+3. **`build-windows`** - Builds unsigned Windows app + Windows runtime assets
+4. **`generate-runtime-manifest`** - Combines platform metadata into `runtime-manifest.json` and verifies it
+5. **`upload-to-release`** - Uploads installers + runtime assets + manifest to the same tag and verifies URLs
 
 **GitHub Secrets (macOS signing):**
 - `MACOS_CERTIFICATE` - Base64-encoded Developer ID Application certificate (.p12)

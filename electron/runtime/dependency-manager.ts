@@ -120,6 +120,9 @@ export class RuntimeDependencyManager extends EventEmitter {
       lastError: undefined,
     }
 
+    let cancelled = false
+    let installResult: RuntimeDependencyStatus | null = null
+
     try {
       this.emitProgress({ phase: 'checking', message: 'Preparing runtime dependencies...' })
 
@@ -134,24 +137,49 @@ export class RuntimeDependencyManager extends EventEmitter {
       }
 
       await this.refreshStatus()
-      this.emitProgress({ phase: 'done', message: 'Runtime dependencies are ready.' })
-      return this.currentStatus
+      this.emitProgress({ phase: 'done', message: 'Runtime dependencies are ready.', isTerminal: true })
+      installResult = this.currentStatus
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       const isCancelled = message.toLowerCase().includes('cancel')
+      cancelled = isCancelled
       this.currentStatus = {
         ...this.currentStatus,
         state: isCancelled ? 'needs_install' : 'error',
         ready: false,
         lastError: isCancelled ? undefined : message,
       }
-      this.emitProgress({ phase: isCancelled ? 'checking' : 'error', message: isCancelled ? 'Install cancelled.' : message })
+
+      this.emitProgress({
+        phase: isCancelled ? 'cancelled' : 'error',
+        message: isCancelled ? 'Install cancelled.' : message,
+        isTerminal: true,
+      })
+
       await this.refreshStatus()
-      throw error
+
+      if (!isCancelled) {
+        throw error
+      }
     } finally {
       this.installAbortController = null
       await this.refreshStatus()
+
+      if (cancelled) {
+        this.currentStatus = {
+          ...this.currentStatus,
+          state: 'needs_install',
+          ready: false,
+          lastError: undefined,
+        }
+      }
     }
+
+    if (installResult) {
+      return installResult
+    }
+
+    return this.currentStatus
   }
 
   private async refreshStatus(): Promise<void> {

@@ -28,6 +28,7 @@ export default function App() {
   const [runtimeProgress, setRuntimeProgress] = useState<RuntimeInstallProgress | null>(null)
   const [runtimeLoading, setRuntimeLoading] = useState(true)
   const [runtimeInstallError, setRuntimeInstallError] = useState<string | null>(null)
+  const [runtimeInstalling, setRuntimeInstalling] = useState(false)
 
   const canViewTranscript = status === 'idle' && (transcriptText || transcriptSegments.length > 0)
 
@@ -40,6 +41,7 @@ export default function App() {
         dependencies: [],
         runtimeRoot: 'n/a',
       })
+      setRuntimeInstalling(false)
       setRuntimeLoading(false)
       return
     }
@@ -48,9 +50,11 @@ export default function App() {
     const result = await window.electronAPI.getRuntimeDependencyStatus()
     if (result.success && result.status) {
       setRuntimeStatus(result.status)
+      setRuntimeInstalling(result.status.state === 'installing')
       setRuntimeInstallError(null)
     } else if ('success' in result && !result.success) {
       setRuntimeInstallError(result.error)
+      setRuntimeInstalling(false)
     }
     setRuntimeLoading(false)
   }
@@ -64,8 +68,20 @@ export default function App() {
 
     const unsubscribe = window.electronAPI.onRuntimeDependencyProgress((progress) => {
       setRuntimeProgress(progress)
+
+      if (progress.phase === 'cancelled') {
+        setRuntimeInstallError(null)
+      }
+
       if (progress.phase === 'error') {
         setRuntimeInstallError(progress.message)
+      }
+
+      if (progress.isTerminal || progress.phase === 'done' || progress.phase === 'error' || progress.phase === 'cancelled') {
+        setRuntimeInstalling(false)
+        void loadRuntimeStatus()
+      } else {
+        setRuntimeInstalling(true)
       }
     })
 
@@ -78,17 +94,31 @@ export default function App() {
     }
 
     setRuntimeInstallError(null)
+    setRuntimeInstalling(true)
+    setRuntimeStatus((prev) => {
+      if (!prev) {
+        return prev
+      }
+
+      return {
+        ...prev,
+        state: 'installing',
+        lastError: undefined,
+      }
+    })
     setRuntimeProgress({ phase: 'checking', message: 'Starting install...' })
 
     const result = await window.electronAPI.installRuntimeDependencies()
     if (result.success && result.status) {
       setRuntimeStatus(result.status)
+      setRuntimeInstalling(result.status.state === 'installing')
       return
     }
 
     if ('success' in result && !result.success) {
       setRuntimeInstallError(result.error)
     }
+    setRuntimeInstalling(false)
     await loadRuntimeStatus()
   }
 
@@ -97,6 +127,11 @@ export default function App() {
       return
     }
     await window.electronAPI.cancelRuntimeDependencyInstall()
+    setRuntimeProgress({
+      phase: 'cancelled',
+      message: 'Cancelling install...',
+    })
+    setRuntimeInstalling(false)
     await loadRuntimeStatus()
   }
 
@@ -168,6 +203,7 @@ export default function App() {
           status={runtimeStatus}
           progress={runtimeProgress}
           loading={runtimeLoading}
+          installing={runtimeInstalling}
           installError={runtimeInstallError}
           onInstall={() => void installRuntimeDependencies()}
           onCancel={() => void cancelRuntimeInstall()}

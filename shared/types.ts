@@ -128,9 +128,10 @@ export interface RuntimeDependencyStatus {
 }
 
 export interface RuntimeInstallProgress {
-  phase: 'checking' | 'downloading' | 'verifying' | 'extracting' | 'finalizing' | 'done' | 'error'
+  phase: 'checking' | 'downloading' | 'verifying' | 'extracting' | 'finalizing' | 'done' | 'cancelled' | 'error'
   dependencyId?: RuntimeDependencyId
   bytesDownloaded?: number
   bytesTotal?: number
+  isTerminal?: boolean
   message: string
 }

@@ -6,6 +6,7 @@ interface RuntimeSetupGateProps {
   status: RuntimeDependencyStatus | null
   progress: RuntimeInstallProgress | null
   loading: boolean
+  installing: boolean
   installError: string | null
   onInstall: () => void
   onCancel: () => void
@@ -16,12 +17,15 @@ export function RuntimeSetupGate({
   status,
   progress,
   loading,
+  installing,
   installError,
   onInstall,
   onCancel,
   onRefresh,
 }: RuntimeSetupGateProps) {
-  const isInstalling = status?.state === 'installing'
+  const isInstalling = installing || status?.state === 'installing'
+  const progressDone = progress?.phase === 'done'
+  const progressCancelled = progress?.phase === 'cancelled'
   const progressPct = progress?.bytesTotal && progress.bytesTotal > 0 && progress.bytesDownloaded !== undefined
     ? Math.min(100, Math.round((progress.bytesDownloaded / progress.bytesTotal) * 100))
     : null
@@ -57,12 +61,18 @@ export function RuntimeSetupGate({
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
                   <span>{progress?.message ?? 'Installing dependencies...'}</span>
-                  {progressPct !== null ? <span>{progressPct}%</span> : null}
+                  {progressDone
+                    ? <span>100%</span>
+                    : progressCancelled
+                      ? <span>Cancelled</span>
+                      : progressPct !== null
+                        ? <span>{progressPct}%</span>
+                        : null}
                 </div>
                 <div className="h-2 rounded-full bg-secondary overflow-hidden">
                   <div
                     className="h-full bg-primary transition-all duration-300"
-                    style={{ width: `${progressPct ?? (isInstalling ? 35 : 0)}%` }}
+                    style={{ width: `${progressDone ? 100 : (progressPct ?? (isInstalling ? 35 : 0))}%` }}
                   />
                 </div>
               </div>

@@ -1,32 +1,57 @@
-name: Build Dodo Recorder
+name: Build and Publish Dodo Recorder Release
 
 on:
+  release:
+    types: [published]
   workflow_dispatch:
     inputs:
       release_tag:
-        description: 'Release tag to attach artifacts to (e.g., v0.1.0). Leave empty to only build artifacts without uploading to a release.'
-        required: false
+        description: 'Release tag to build and publish (e.g., v0.4.2)'
+        required: true
         type: string
-      platforms:
-        description: 'Platforms to build'
-        required: false
-        default: 'macos-arm64,windows'
-        type: choice
-        options:
-          - 'macos-arm64,windows'
-          - 'macos-arm64'
-          - 'windows'
+
+permissions:
+  contents: write
 
 jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      release_tag: ${{ steps.resolve.outputs.release_tag }}
+
+    steps:
+      - name: Resolve release tag
+        id: resolve
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            TAG="${{ github.event.release.tag_name }}"
+          else
+            TAG="${{ github.event.inputs.release_tag }}"
+          fi
+
+          if [ -z "$TAG" ]; then
+            echo "Release tag is required"
+            exit 1
+          fi
+
+          if [[ ! "$TAG" =~ ^v ]]; then
+            echo "Release tag must start with 'v' (got: $TAG)"
+            exit 1
+          fi
+
+          echo "release_tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Resolved release tag: $TAG"
+
   build-macos-arm64:
-    if: contains(github.event.inputs.platforms, 'macos-arm64')
+    needs: [prepare]
     runs-on: macos-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout code at release tag
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.release_tag || github.ref }}
+          ref: refs/tags/${{ needs.prepare.outputs.release_tag }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -36,7 +61,7 @@ jobs:
       - name: Get npm cache directory
         id: npm-cache-dir
         shell: bash
-        run: echo "dir=$(npm config get cache)" >> $GITHUB_OUTPUT
+        run: echo "dir=$(npm config get cache)" >> "$GITHUB_OUTPUT"
 
       - name: Cache npm dependencies
         uses: actions/cache@v4
@@ -49,38 +74,44 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Import Code Signing Certificate
+      - name: Import code signing certificate
         shell: bash
         run: |
-          # Create variables directory
           mkdir -p ~/variables
-
-          # Decode the certificate from base64
           echo "${{ secrets.MACOS_CERTIFICATE }}" | base64 --decode > ~/variables/certificate.p12
 
-          # Import certificate to keychain
           security create-keychain -p actions build.keychain
           security default-keychain -s build.keychain
           security unlock-keychain -p actions build.keychain
           security import ~/variables/certificate.p12 -k build.keychain -P "${{ secrets.MACOS_CERTIFICATE_PASSWORD }}" -T /usr/bin/codesign
           security set-key-partition-list -S apple-tool:,apple: -s -k actions build.keychain
           security list-keychains -s build.keychain
-          
-          # Verify certificate was imported successfully
+
           echo "Verifying imported identities:"
           security find-identity -v -p codesigning build.keychain
 
-      - name: Build
+      - name: Build macOS app
         run: npm run build:prod
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          # Use explicit certificate file if keychain auto-discovery fails
           CSC_LINK: ~/variables/certificate.p12
           CSC_KEY_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
 
-      - name: Upload artifacts
+      - name: Package runtime assets (macOS)
+        shell: bash
+        run: |
+          npm run install:browsers
+          mkdir -p models
+          curl -L -o models/ggml-small.en.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.en.bin
+          node ./build/package-runtime-assets.js \
+            --platform darwin-arm64 \
+            --release-tag "${{ needs.prepare.outputs.release_tag }}" \
+            --repo "${{ github.repository }}" \
+            --output release/runtime-assets/darwin-arm64
+
+      - name: Upload app artifacts (macOS)
         uses: actions/upload-artifact@v4
         with:
           name: dodo-recorder-macos-arm64
@@ -89,15 +120,22 @@ jobs:
             release/*.zip
           retention-days: 30
 
+      - name: Upload runtime assets (macOS)
+        uses: actions/upload-artifact@v4
+        with:
+          name: dodo-runtime-assets-darwin-arm64
+          path: release/runtime-assets/darwin-arm64/*
+          retention-days: 30
+
   build-windows:
-    if: contains(github.event.inputs.platforms, 'windows')
+    needs: [prepare]
     runs-on: windows-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout code at release tag
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.release_tag || github.ref }}
+          ref: refs/tags/${{ needs.prepare.outputs.release_tag }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -107,7 +145,7 @@ jobs:
       - name: Get npm cache directory
         id: npm-cache-dir
         shell: bash
-        run: echo "dir=$(npm config get cache)" >> $GITHUB_OUTPUT
+        run: echo "dir=$(npm config get cache)" >> "$GITHUB_OUTPUT"
 
       - name: Cache npm dependencies
         uses: actions/cache@v4
@@ -120,20 +158,23 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build
-        run: npm run build:prod
+      - name: Build Windows app (unsigned)
         shell: bash
+        run: npm run build:prod
 
-      - name: Prepare Windows runtime assets
-        if: github.event.inputs.release_tag != ''
+      - name: Package runtime assets (Windows)
         shell: bash
         run: |
           npm run install:browsers
           mkdir -p models
           curl -L -o models/ggml-small.en.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.en.bin
-          node ./build/package-runtime-assets.js --platform win32-x64 --release-tag "${{ github.event.inputs.release_tag }}" --output release/runtime-assets/win32-x64
+          node ./build/package-runtime-assets.js \
+            --platform win32-x64 \
+            --release-tag "${{ needs.prepare.outputs.release_tag }}" \
+            --repo "${{ github.repository }}" \
+            --output release/runtime-assets/win32-x64
 
-      - name: Upload artifacts
+      - name: Upload app artifacts (Windows)
         uses: actions/upload-artifact@v4
         with:
           name: dodo-recorder-windows
@@ -141,42 +182,117 @@ jobs:
           retention-days: 30
 
       - name: Upload runtime assets (Windows)
-        if: github.event.inputs.release_tag != ''
         uses: actions/upload-artifact@v4
         with:
           name: dodo-runtime-assets-win32-x64
           path: release/runtime-assets/win32-x64/*
           retention-days: 30
 
-  upload-to-release:
-    needs: [build-macos-arm64, build-windows]
+  generate-runtime-manifest:
+    needs: [prepare, build-macos-arm64, build-windows]
     runs-on: ubuntu-latest
-    if: always() && github.event.inputs.release_tag != ''
-    permissions:
-      contents: write
 
     steps:
-      - name: Checkout code
+      - name: Checkout code at release tag
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.release_tag }}
+          ref: refs/tags/${{ needs.prepare.outputs.release_tag }}
+
+      - name: Download runtime assets (macOS)
+        uses: actions/download-artifact@v4
+        with:
+          name: dodo-runtime-assets-darwin-arm64
+          path: artifacts/runtime-assets/darwin-arm64
+
+      - name: Download runtime assets (Windows)
+        uses: actions/download-artifact@v4
+        with:
+          name: dodo-runtime-assets-win32-x64
+          path: artifacts/runtime-assets/win32-x64
+
+      - name: Generate runtime manifest
+        run: |
+          node ./build/generate-runtime-manifest.js \
+            --metadata-dir artifacts/runtime-assets \
+            --output artifacts/runtime-assets/runtime-manifest.json
+
+      - name: Verify runtime manifest structure
+        run: |
+          node ./build/verify-runtime-manifest.js \
+            --manifest artifacts/runtime-assets/runtime-manifest.json
+
+      - name: Upload runtime manifest artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dodo-runtime-manifest
+          path: artifacts/runtime-assets/runtime-manifest.json
+          retention-days: 30
+
+  upload-to-release:
+    needs: [prepare, build-macos-arm64, build-windows, generate-runtime-manifest]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code at release tag
+        uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ needs.prepare.outputs.release_tag }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
 
-      - name: Display structure of downloaded files
+      - name: Display downloaded artifact structure
         run: ls -R artifacts
 
-      - name: Upload to GitHub Release
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: ${{ github.event.inputs.release_tag }}
-          files: |
+      - name: Upload installers and runtime assets to GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          shopt -s nullglob
+
+          files=(
             artifacts/dodo-recorder-macos-arm64/*
             artifacts/dodo-recorder-windows/*
-            artifacts/dodo-runtime-assets-win32-x64/*
-          fail_on_unmatched_files: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            artifacts/dodo-runtime-assets-darwin-arm64/dodo-runtime-whisper-model-small.en.bin
+            artifacts/dodo-runtime-assets-darwin-arm64/dodo-runtime-whisper-binary-darwin-arm64
+            artifacts/dodo-runtime-assets-win32-x64/dodo-runtime-whisper-binary-win32-x64.zip
+            artifacts/dodo-runtime-assets-darwin-arm64/dodo-runtime-playwright-darwin-arm64-chromium-*.zip
+            artifacts/dodo-runtime-assets-win32-x64/dodo-runtime-playwright-win32-x64-chromium-*.zip
+            artifacts/dodo-runtime-manifest/runtime-manifest.json
+          )
+
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "No files found to upload"
+            exit 1
+          fi
+
+          gh release upload "${{ needs.prepare.outputs.release_tag }}" "${files[@]}" \
+            --repo "${{ github.repository }}" \
+            --clobber
+
+      - name: Verify uploaded runtime URLs
+        shell: bash
+        run: |
+          for attempt in 1 2 3 4 5 6; do
+            echo "URL verification attempt ${attempt}/6"
+            if node ./build/verify-runtime-manifest.js \
+              --manifest artifacts/dodo-runtime-manifest/runtime-manifest.json \
+              --check-urls true; then
+              exit 0
+            fi
+
+            if [ "$attempt" -eq 6 ]; then
+              echo "Runtime URL verification failed after all retries"
+              exit 1
+            fi
+
+            sleep 10
+          done

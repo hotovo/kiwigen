@@ -1,128 +1,81 @@
 # Runtime Release Checklist
 
-Use this checklist for each release so first-launch runtime dependency setup works.
+Use this checklist for every release. Runtime artifacts and `runtime-manifest.json` are now generated and uploaded automatically by CI.
 
 ## Non-negotiable rules
 
-- [ ] Release tag must match app version exactly: `v<package.json version>` (example: `0.4.0` -> `v0.4.0`)
-- [ ] `runtime-manifest.json` must be uploaded as a GitHub Release asset on that same tag
-- [ ] All runtime artifacts must be uploaded at the release asset root (flat file list, no subpaths)
-- [ ] Do not rename artifact files after packaging (manifest URLs/checksums depend on exact names)
+- [ ] Release tag must match app version exactly: `v<package.json version>` (example: `0.4.2` -> `v0.4.2`)
+- [ ] Publish a GitHub Release on that tag (this triggers the automation workflow)
+- [ ] Do not manually upload runtime assets unless you are recovering from a failed CI run
 
 ---
 
-## 1) Prepare runtime assets
+## 1) Prepare source and tag locally
 
-## macOS ARM64 (local macOS machine)
-
-- [ ] Quick path (recommended): `npm run runtime:prepare:mac`
-  - Runs browser install + mac runtime packaging using `v<package.json version>` automatically
-  - Writes output to `release/runtime-assets/darwin-arm64`
-- [ ] Ensure model exists at `models/ggml-small.en.bin`
-- [ ] Install Chromium runtime: `npm run install:browsers`
-- [ ] Package macOS artifacts:
+- [ ] Commit the exact changes you want to ship
+- [ ] Verify `package.json` version is final
+- [ ] Create and push tag:
 
 ```bash
-node ./build/package-runtime-assets.js \
-  --platform darwin-arm64 \
-  --release-tag vX.Y.Z \
-  --output release/runtime-assets/darwin-arm64
-```
-
-Expected output in `release/runtime-assets/darwin-arm64`:
-- `dodo-runtime-whisper-model-small.en.bin`
-- `dodo-runtime-whisper-binary-darwin-arm64`
-- `dodo-runtime-playwright-darwin-arm64-chromium-*.zip`
-- `asset-metadata.darwin-arm64.json`
-
-## Windows x64 (GitHub Actions)
-
-- [ ] Run workflow **Build Dodo Recorder** with `release_tag=vX.Y.Z`
-- [ ] Confirm workflow artifact `dodo-runtime-assets-win32-x64` exists
-- [ ] Download the workflow artifact and place files under `release/runtime-assets/win32-x64`
-
-Expected output in `release/runtime-assets/win32-x64`:
-- `dodo-runtime-whisper-model-small.en.bin`
-- `dodo-runtime-whisper-binary-win32-x64.zip`
-- `dodo-runtime-playwright-win32-x64-chromium-*.zip`
-- `asset-metadata.win32-x64.json`
-
----
-
-## 2) Generate and verify manifest
-
-- [ ] Generate combined manifest (must include both platforms):
-
-```bash
-node ./build/generate-runtime-manifest.js \
-  --metadata-dir release/runtime-assets \
-  --output release/runtime-assets/runtime-manifest.json
-```
-
-Note: by default this command requires metadata for both `darwin-arm64` and `win32-x64`.
-If you only have macOS metadata locally (before collecting Windows artifacts), you can generate a temporary local manifest with:
-
-```bash
-node ./build/generate-runtime-manifest.js \
-  --metadata-dir release/runtime-assets \
-  --output release/runtime-assets/runtime-manifest.json \
-  --require-platforms false
-```
-
-Do not publish a single-platform manifest for a cross-platform release.
-
-- [ ] Verify manifest structure:
-
-```bash
-node ./build/verify-runtime-manifest.js \
-  --manifest release/runtime-assets/runtime-manifest.json
+git tag -a vX.Y.Z -m "Release vX.Y.Z"
+git push origin vX.Y.Z
 ```
 
 ---
 
-## 3) Upload to GitHub Release (asset root)
+## 2) Publish GitHub Release
 
-Target release: `https://github.com/dodosaurus/dodo-recorder/releases/tag/vX.Y.Z`
+- [ ] Open `https://github.com/dodosaurus/dodo-recorder/releases/new`
+- [ ] Select tag `vX.Y.Z`
+- [ ] Publish release
 
-Required release assets:
-- [ ] `runtime-manifest.json`
-- [ ] `dodo-runtime-whisper-model-small.en.bin` (upload once)
-- [ ] `dodo-runtime-whisper-binary-darwin-arm64`
-- [ ] `dodo-runtime-whisper-binary-win32-x64.zip` (includes exe + DLLs)
-- [ ] `dodo-runtime-playwright-darwin-arm64-chromium-*.zip`
-- [ ] `dodo-runtime-playwright-win32-x64-chromium-*.zip`
-
-Example upload command:
-
-```bash
-gh release upload vX.Y.Z \
-  release/runtime-assets/runtime-manifest.json \
-  release/runtime-assets/darwin-arm64/dodo-runtime-whisper-model-small.en.bin \
-  release/runtime-assets/darwin-arm64/dodo-runtime-whisper-binary-darwin-arm64 \
-  release/runtime-assets/win32-x64/dodo-runtime-whisper-binary-win32-x64.zip \
-  release/runtime-assets/darwin-arm64/dodo-runtime-playwright-darwin-arm64-chromium-*.zip \
-  release/runtime-assets/win32-x64/dodo-runtime-playwright-win32-x64-chromium-*.zip \
-  --clobber
-```
+Publishing triggers [`build.yml`](../.github/workflows/build.yml) automatically.
 
 ---
 
-## 4) Post-upload validation
+## 3) CI workflow responsibilities (automatic)
 
-- [ ] Validate release URLs from manifest:
+When release is published, CI will:
 
-```bash
-node ./build/verify-runtime-manifest.js \
-  --manifest release/runtime-assets/runtime-manifest.json \
-  --check-urls true
-```
+1. Build signed/notarized macOS installer artifacts.
+2. Build unsigned Windows installer artifacts.
+3. Package runtime assets on both platforms:
+   - `dodo-runtime-whisper-model-small.en.bin`
+   - `dodo-runtime-whisper-binary-darwin-arm64`
+   - `dodo-runtime-whisper-binary-win32-x64.zip`
+   - `dodo-runtime-playwright-<platform>-chromium-*.zip`
+   - platform metadata JSON files
+4. Generate combined `runtime-manifest.json` from both metadata files.
+5. Verify manifest structure.
+6. Upload installers + runtime assets + `runtime-manifest.json` to the same release tag.
+7. Verify uploaded runtime URLs (with retry for GitHub asset propagation delay).
 
-- [ ] Smoke test clean install:
-  - Delete runtime cache:
-    - macOS: `~/Library/Application Support/dodo-recorder/runtime-deps/`
-    - Windows: `%USERPROFILE%\AppData\Roaming\dodo-recorder\runtime-deps\`
-  - Launch app and run **Install Runtime Dependencies**
-  - Confirm flow reaches `ready`
+---
+
+## 4) Post-run validation
+
+- [ ] In the release page, confirm these assets exist:
+  - `runtime-manifest.json`
+  - `dodo-runtime-whisper-model-small.en.bin`
+  - `dodo-runtime-whisper-binary-darwin-arm64`
+  - `dodo-runtime-whisper-binary-win32-x64.zip`
+  - `dodo-runtime-playwright-darwin-arm64-chromium-*.zip`
+  - `dodo-runtime-playwright-win32-x64-chromium-*.zip`
+  - macOS installer artifacts (`.dmg`, `.zip`)
+  - Windows installer artifacts (`.exe`)
+- [ ] Smoke test first-launch setup from a clean runtime cache:
+  - macOS: `~/Library/Application Support/dodo-recorder/runtime-deps/`
+  - Windows: `%USERPROFILE%\AppData\Roaming\dodo-recorder\runtime-deps\`
+
+---
+
+## Recovery path (only if release trigger fails)
+
+If release event was missed or CI failed before upload:
+
+1. Re-run the workflow manually via `workflow_dispatch`.
+2. Pass `release_tag=vX.Y.Z`.
+3. Validate the release assets again.
 
 ---
 
@@ -133,5 +86,5 @@ If first-launch setup fails, check in this order:
 1. Tag/version mismatch (`v<app version>` not respected)
 2. `runtime-manifest.json` missing from release assets
 3. One or more runtime assets missing on release
-4. Asset filename changed after manifest generation
+4. Asset filename changed after packaging
 5. SHA256 mismatch (regenerate metadata + manifest)
