@@ -17,8 +17,9 @@ export interface RuntimeManifest {
   platforms: Record<RuntimePlatform, { artifacts: RuntimeArtifactSpec[] }>
 }
 
-// NOTE: URLs/SHA256 are intentionally empty until runtime assets are published.
-// The app can still migrate from legacy bundled assets during transition releases.
+const RELEASE_TAG = 'v0.4.0'
+const RELEASE_BASE = `https://github.com/dodosaurus/dodo-recorder/releases/download/${RELEASE_TAG}`
+
 export const runtimeManifest: RuntimeManifest = {
   manifestVersion: 1,
   platforms: {
@@ -26,26 +27,26 @@ export const runtimeManifest: RuntimeManifest = {
       artifacts: [
         {
           id: 'whisper-model',
-          version: 'small.en-2026-02-25',
-          url: '',
-          sha256: '',
+          version: 'small.en-0.4.0',
+          url: `${RELEASE_BASE}/dodo-runtime-whisper-model-small.en.bin`,
+          sha256: 'c6138d6d58ecc8322097e0f987c32f1be8bb0a18532a3f88f734d1bbf9c41e5d',
           type: 'file',
           targetPath: 'models/ggml-small.en.bin',
         },
         {
           id: 'whisper-binary',
-          version: 'whispercpp-2026-02-25',
-          url: '',
-          sha256: '',
+          version: 'whispercpp-0.4.0',
+          url: `${RELEASE_BASE}/dodo-runtime-whisper-binary-darwin-arm64`,
+          sha256: '3cc8df8150d57f0f2e82d7ef929985ded2dd71e2fcc7bff704d70ee157ccb3b6',
           type: 'file',
           targetPath: 'models/unix/whisper',
           executable: true,
         },
         {
           id: 'playwright-chromium',
-          version: 'chromium-1200',
-          url: '',
-          sha256: '',
+          version: 'chromium-1208',
+          url: `${RELEASE_BASE}/dodo-runtime-playwright-darwin-arm64-chromium-1208.zip`,
+          sha256: '2c179f2e76e998c6b57a61696ea99470052b84f6ec9f4098f0ed315f9f96fda4',
           type: 'zip',
           targetPath: 'playwright-browsers',
         },
@@ -55,25 +56,25 @@ export const runtimeManifest: RuntimeManifest = {
       artifacts: [
         {
           id: 'whisper-model',
-          version: 'small.en-2026-02-25',
-          url: '',
-          sha256: '',
+          version: 'small.en-0.4.0',
+          url: `${RELEASE_BASE}/dodo-runtime-whisper-model-small.en.bin`,
+          sha256: 'c6138d6d58ecc8322097e0f987c32f1be8bb0a18532a3f88f734d1bbf9c41e5d',
           type: 'file',
           targetPath: 'models/ggml-small.en.bin',
         },
         {
           id: 'whisper-binary',
-          version: 'whispercpp-2026-02-25',
-          url: '',
-          sha256: '',
+          version: 'whispercpp-0.4.0',
+          url: `${RELEASE_BASE}/dodo-runtime-whisper-binary-win32-x64.exe`,
+          sha256: '0ff971e410240a0b97117432d771245698f376e06105c011959d2bfc4bb23311',
           type: 'file',
           targetPath: 'models/win/whisper-cli.exe',
         },
         {
           id: 'playwright-chromium',
           version: 'chromium-1200',
-          url: '',
-          sha256: '',
+          url: `${RELEASE_BASE}/dodo-runtime-playwright-win32-x64-chromium-1200.zip`,
+          sha256: 'de952108e8f709a68317cf8b1081a2df1e1b5d6af6ef45e458540a9f6c9c2891',
           type: 'zip',
           targetPath: 'playwright-browsers',
         },

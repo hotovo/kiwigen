@@ -8,6 +8,16 @@ import { updateTimeWindows } from './utils/voiceDistribution'
 import { registerAllHandlers } from './ipc/handlers'
 import { runtimeDependencyManager } from './runtime/dependency-manager'
 
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught exception:', error)
+  logger.error('Uncaught exception:', error)
+})
+
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled rejection:', reason)
+  logger.error('Unhandled rejection:', reason)
+})
+
 let mainWindow: BrowserWindow | null = null
 
 const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL']
@@ -61,6 +71,8 @@ function setupPermissionHandlers() {
 }
 
 async function createWindow() {
+  logger.info('Creating main window...')
+  
   setupPermissionHandlers()
   await requestMicrophonePermission()
 
@@ -70,9 +82,11 @@ async function createWindow() {
     minWidth: 900,
     minHeight: 600,
     backgroundColor: '#0a0a0b',
-    titleBarStyle: isMac ? 'hiddenInset' : 'hidden',
+    show: false,
+    titleBarStyle: isMac ? 'hiddenInset' : undefined,
     titleBarOverlay: !isMac ? false : undefined,
     frame: isMac,
+    autoHideMenuBar: isWindows,
     trafficLightPosition: isMac ? { x: 16, y: 10 } : undefined,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -81,48 +95,95 @@ async function createWindow() {
     },
   })
 
+  mainWindow.once('ready-to-show', () => {
+    logger.info('Window ready to show, displaying...')
+    mainWindow?.show()
+  })
+
+  logger.info(VITE_DEV_SERVER_URL 
+    ? `Loading dev server: ${VITE_DEV_SERVER_URL}` 
+    : 'Loading production build from dist/index.html')
+
   if (VITE_DEV_SERVER_URL) {
-    mainWindow.loadURL(VITE_DEV_SERVER_URL)
+    await mainWindow.loadURL(VITE_DEV_SERVER_URL)
   } else {
-    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'))
+    await mainWindow.loadFile(path.join(__dirname, '../dist/index.html'))
   }
 
   mainWindow.on('closed', () => {
+    logger.info('Main window closed')
     mainWindow = null
   })
 
-  // Register all IPC handlers after window is created
+  mainWindow.on('unresponsive', () => {
+    logger.warn('Main window became unresponsive')
+  })
+
+  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+    logger.error(`Failed to load: ${errorCode} - ${errorDescription}`)
+  })
+
+  mainWindow.webContents.on('render-process-gone', (event, details) => {
+    logger.error(`Render process gone: ${details.reason} - ${details.exitCode}`)
+  })
+
   registerAllHandlers(mainWindow)
+  logger.info('Main window created successfully')
 }
 
-app.whenReady().then(async () => {
-  // Log startup information
-  logger.logStartupInfo()
-  
-  // Log build information
-  const buildInfo = getBuildInfo()
-  if (buildInfo) {
-    logger.info(`📦 Build: ${buildInfo.commitHash}${buildInfo.isDirty ? ' (dirty)' : ''}`)
-    logger.info(`   Branch: ${buildInfo.branch}`)
-    logger.info(`   Built: ${buildInfo.buildTime}`)
-  } else {
-    logger.info('📦 Build: unknown')
+async function initializeApp(): Promise<void> {
+  try {
+    logger.logStartupInfo()
+    
+    const buildInfo = getBuildInfo()
+    if (buildInfo) {
+      logger.info(`📦 Build: ${buildInfo.commitHash}${buildInfo.isDirty ? ' (dirty)' : ''}`)
+      logger.info(`   Branch: ${buildInfo.branch}`)
+      logger.info(`   Built: ${buildInfo.buildTime}`)
+    } else {
+      logger.info('📦 Build: unknown')
+    }
+    
+    logger.info('Initializing runtime dependency manager...')
+    await runtimeDependencyManager.initialize()
+    logger.info('Runtime dependency manager initialized')
+    
+    logger.info('Loading settings...')
+    const settings = getSettingsStore()
+    
+    updateTimeWindows(settings.getVoiceDistributionConfig())
+    
+    logger.info('Cleaning up old temp files...')
+    const tempDir = path.join(app.getPath('temp'), 'dodo-recorder')
+    await cleanupOldTempFiles(tempDir, 24 * 60 * 60 * 1000)
+    
+    logger.info('Creating main window...')
+    await createWindow()
+    logger.info('App initialization complete')
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    const errorStack = error instanceof Error ? error.stack : undefined
+    
+    logger.error('❌ Fatal error during app initialization:', errorMessage)
+    if (errorStack) {
+      logger.error('Stack trace:', errorStack)
+    }
+    
+    dialog.showErrorBox(
+      'Dodo Recorder - Startup Error',
+      `Failed to start Dodo Recorder:\n\n${errorMessage}\n\nPlease check the logs for more details.\n\nLog location: ${logger.getLogPath()}`
+    )
+    
+    app.quit()
   }
-  
-  // Initialize runtime dependency manager
-  await runtimeDependencyManager.initialize()
-  
-  // Initialize settings
-  const settings = getSettingsStore()
-  
-  // Apply voice distribution settings
-  updateTimeWindows(settings.getVoiceDistributionConfig())
-  
-  // Clean up old temp files on startup (older than 24 hours)
-  const tempDir = path.join(app.getPath('temp'), 'dodo-recorder')
-  await cleanupOldTempFiles(tempDir, 24 * 60 * 60 * 1000)
-  
-  await createWindow()
+}
+
+app.whenReady().then(() => {
+  void initializeApp()
+}).catch((error) => {
+  console.error('app.whenReady() rejected:', error)
+  logger.error('app.whenReady() rejected:', error)
+  app.quit()
 })
 
 app.on('window-all-closed', () => {
@@ -133,7 +194,7 @@ app.on('window-all-closed', () => {
 
 app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) {
-    createWindow()
+    void createWindow()
   }
 })
 

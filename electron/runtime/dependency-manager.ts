@@ -47,14 +47,33 @@ export class RuntimeDependencyManager extends EventEmitter {
       dependencies: [],
       runtimeRoot: this.runtimeRoot,
     }
+    logger.info(`[runtime] Runtime root: ${this.runtimeRoot}`)
+    logger.info(`[runtime] Platform: ${process.platform}-${process.arch}`)
   }
 
   async initialize(): Promise<void> {
-    await ensureDir(this.runtimeRoot)
-    await this.loadRemoteManifestIfAvailable()
-    await this.loadInstallState()
-    await this.tryImportLegacyBundledAssets()
-    await this.refreshStatus()
+    logger.info('[runtime] Starting initialization...')
+    try {
+      logger.info(`[runtime] Ensuring runtime directory exists: ${this.runtimeRoot}`)
+      await ensureDir(this.runtimeRoot)
+      
+      logger.info('[runtime] Loading remote manifest...')
+      await this.loadRemoteManifestIfAvailable()
+      
+      logger.info('[runtime] Loading install state...')
+      await this.loadInstallState()
+      
+      logger.info('[runtime] Checking for legacy bundled assets...')
+      await this.tryImportLegacyBundledAssets()
+      
+      logger.info('[runtime] Refreshing status...')
+      await this.refreshStatus()
+      
+      logger.info(`[runtime] Initialization complete. Ready: ${this.currentStatus.ready}`)
+    } catch (error) {
+      logger.error('[runtime] Initialization failed:', error instanceof Error ? error.message : String(error))
+      throw error
+    }
   }
 
   getStatus(): RuntimeDependencyStatus {
@@ -341,19 +360,26 @@ export class RuntimeDependencyManager extends EventEmitter {
   private async loadRemoteManifestIfAvailable(): Promise<void> {
     const manifestUrl = this.getRemoteManifestUrl()
     if (!manifestUrl) {
-      logger.info('Runtime manifest URL not configured, using bundled manifest.')
+      logger.info('[runtime] Manifest URL not configured, using bundled manifest.')
       return
     }
 
     try {
+      logger.info(`[runtime] Fetching manifest from ${manifestUrl}`)
       const content = await this.fetchText(manifestUrl)
       const parsed = JSON.parse(content) as RuntimeManifest
       this.validateManifest(parsed)
+      
+      const currentPlatform = this.getRuntimePlatform()
+      if (!parsed.platforms[currentPlatform]) {
+        logger.warn(`[runtime] Remote manifest does not contain platform ${currentPlatform}, falling back to bundled manifest.`)
+        return
+      }
+      
       this.activeManifest = parsed
-      logger.info(`Loaded remote runtime manifest from ${manifestUrl}`)
+      logger.info(`[runtime] Loaded remote runtime manifest from ${manifestUrl}`)
     } catch (error) {
-      logger.warn('Failed to load remote runtime manifest. Falling back to bundled manifest.', error)
-      this.activeManifest = runtimeManifest
+      logger.warn('[runtime] Failed to load remote runtime manifest. Falling back to bundled manifest.', error instanceof Error ? error.message : String(error))
     }
   }
 
