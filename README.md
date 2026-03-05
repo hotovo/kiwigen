@@ -8,18 +8,6 @@
   A desktop application for recording browser interactions and voice commentary, producing session bundles optimized for AI-assisted test generation.
 </p>
 
-<p align="center">
-  <img src="src/assets/hotovo-logo.png" alt="Hotovo logo" width="180" />
-</p>
-
-<p align="center">
-  Developed under <strong>Hotovo</strong> • More projects: <a href="https://github.com/hotovo">https://github.com/hotovo</a>
-</p>
-
-<p align="center">
-  <strong>Active Development</strong> • Open Source
-</p>
-
 ![Screenshot from Dodo Recorder](docs/images/main_screenshot.png)
 
 ---
