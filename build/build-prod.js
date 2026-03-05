@@ -54,7 +54,15 @@ if (platform === 'win32') {
   const iconSource = path.join(process.cwd(), 'build', 'icon.ico');
   const iconDest = path.join(process.cwd(), 'dist-electron', 'icon.ico');
   fs.copyFileSync(iconSource, iconDest);
-  console.log('   ✅ Icon copied to dist-electron/icon.ico');
+  
+  // Verify icon file
+  if (fs.existsSync(iconDest)) {
+    const stats = fs.statSync(iconDest);
+    console.log(`   ✅ Icon copied to dist-electron/icon.ico`);
+    console.log(`   📊 Icon file size: ${(stats.size / 1024).toFixed(2)} KB`);
+  } else {
+    console.warn('   ⚠️  Warning: Icon file not found after copy');
+  }
 }
 
 // Determine platform-specific electron-builder arguments

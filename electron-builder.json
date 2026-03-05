@@ -58,6 +58,10 @@
       "filter": [
         "**/*"
       ]
+    },
+    {
+      "from": "build/icon.ico",
+      "to": "build/icon.ico"
     }
   ],
   "asarUnpack": [

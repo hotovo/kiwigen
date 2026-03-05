@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog, systemPreferences, session, shell } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog, systemPreferences, session, shell, nativeImage, NativeImage } from 'electron'
 import path from 'path'
 import fs from 'fs'
 import { cleanupOldTempFiles } from './utils/fs'
@@ -42,6 +42,35 @@ function getBuildInfo(): Record<string, string | boolean> | null {
   return null
 }
 
+/**
+ * Get the window icon for Windows
+ * Uses nativeImage API for robust icon loading across dev and production
+ */
+function getWindowIcon(): NativeImage | undefined {
+  if (!isWindows) return undefined
+  
+  // Try multiple icon sources for robustness
+  const iconPaths = [
+    path.join(process.resourcesPath, 'build', 'icon.ico'),  // Packaged app (extraResources)
+    path.join(app.getAppPath(), 'build', 'icon.ico'),       // Development mode
+    path.join(__dirname, '..', 'build', 'icon.ico'),        // Fallback 1
+    path.join(__dirname, 'icon.ico'),                       // Fallback 2 (copied by build script)
+  ]
+  
+  for (const iconPath of iconPaths) {
+    if (fs.existsSync(iconPath)) {
+      const icon = nativeImage.createFromPath(iconPath)
+      if (!icon.isEmpty()) {
+        logger.info(`✅ Window icon loaded from: ${iconPath}`)
+        return icon
+      }
+    }
+  }
+  
+  logger.warn('⚠️  No window icon found, using default Electron icon')
+  return undefined
+}
+
 async function requestMicrophonePermission(): Promise<boolean> {
   if (isMac) {
     const status = systemPreferences.getMediaAccessStatus('microphone')
@@ -82,7 +111,7 @@ async function createWindow() {
     minHeight: 600,
     backgroundColor: '#0a0a0b',
     show: false,
-    icon: isWindows ? path.join(__dirname, 'icon.ico') : undefined,
+    icon: getWindowIcon(),
     titleBarStyle: isMac ? 'hiddenInset' : undefined,
     titleBarOverlay: !isMac ? false : undefined,
     frame: isMac,
