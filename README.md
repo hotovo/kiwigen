@@ -1,4 +1,4 @@
-<h1 align="center">Dodo Recorder</h1>
+<h1 align="center">KiwiGen</h1>
 
 <p align="center">
   <strong>AI-Ready Browser Interaction Recording for Automated Test Generation</strong>
@@ -8,7 +8,7 @@
   A desktop application for recording browser interactions and voice commentary, producing session bundles optimized for AI-assisted test generation.
 </p>
 
-![Screenshot from Dodo Recorder](docs/images/main_screenshot.png)
+![Screenshot from KiwiGen](docs/images/main_screenshot.png)
 
 ---
 
@@ -20,9 +20,9 @@
 
 ## 🎯 Overview
 
-Dodo Recorder transforms manual browser testing into AI-ready session bundles. Record your interactions, speak your test intentions, and let the app generate comprehensive documentation that AI agents can use to write tests automatically.
+KiwiGen transforms manual browser testing into AI-ready session bundles. Record your interactions, speak your test intentions, and let the app generate comprehensive documentation that AI agents can use to write tests automatically.
 
-**What makes Dodo Recorder special:**
+**What makes KiwiGen special:**
 
 - 🎙️ **Voice Sync**: Speak naturally while testing—your commentary is automatically transcribed and synced with your actions
 - 🎭 **Framework-Agnostic Output**: Works with Playwright, Cypress, Selenium, Puppeteer, or any testing framework
@@ -89,8 +89,8 @@ For detailed build and development instructions, see [`docs/DEVELOPMENT.md`](doc
 
 ```bash
 # Clone and install dependencies
-git clone https://github.com/dodosaurus/dodo-recorder.git
-cd dodo-recorder
+git clone https://github.com/hotovo/kiwigen.git
+cd kiwigen
 npm install
 
 # Run in development mode
@@ -117,7 +117,7 @@ The dependencies are installed once per user profile and reused between launches
 ### Project Structure
 
 ```
-dodo-recorder/
+kiwigen/
 ├── models/                          # Whisper components (source for release packaging)
 │   ├── unix/                       # Unix binary (macOS)
 │   │   └── whisper                # Whisper.cpp binary (committed)
@@ -147,7 +147,7 @@ dodo-recorder/
 
 ## 📝 Reporting Issues
 
-Found a bug or have a feature request? Please open an issue on [GitHub Issues](https://github.com/dodosaurus/dodo-recorder/issues).
+Found a bug or have a feature request? Please open an issue on [GitHub Issues](https://github.com/hotovo/kiwigen/issues).
 
 ---
 
@@ -194,7 +194,7 @@ A: No. All transcription happens locally using Whisper.cpp. Your voice recording
 
 ## 📚 Documentation
 
-- **[User Guide](docs/USER_GUIDE.md)**: Complete user-facing documentation for using Dodo Recorder
+- **[User Guide](docs/USER_GUIDE.md)**: Complete user-facing documentation for using KiwiGen
 - **[Development Guide](docs/DEVELOPMENT.md)**: Comprehensive implementation guide for developers and AI agents working on the codebase
 - **[Agent Guidelines](AGENTS.md)**: Coding standards and guidelines for AI agents (for reference)
 

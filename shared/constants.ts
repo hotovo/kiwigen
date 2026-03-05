@@ -1,5 +1,5 @@
 /**
- * Shared constants for the Dodo Recorder application.
+ * Shared constants for the KiwiGen application.
  *
  * These values are importable by both the Electron main process and the
  * React renderer process via the @/* path alias (which resolves to src/) or

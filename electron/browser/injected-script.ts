@@ -17,7 +17,7 @@ export function getInjectionScript(): () => void {
 
     // ===== Constants =====
     const INPUT_DEBOUNCE_MS = 1000 // Wait 1 second after last keystroke
-    const WIDGET_HOST_ID = '__dodo-recorder-widget-host'
+    const WIDGET_HOST_ID = '__kiwi-widget-host'
 
     // ===== Utility Functions Module =====
     const utils = {
@@ -245,21 +245,21 @@ export function getInjectionScript(): () => void {
 
     // ===== Window Interface =====
     // Define window interface for type safety
-    interface DodoWindow extends Window {
-      __dodoRecordAction: (data: string) => void
-      __dodoTakeScreenshot: () => Promise<string | null>
-      __dodoAssertionMode?: () => boolean
-      __dodoDisableAssertionMode?: () => void
-      __dodoCreateHighlighter?: () => void
-      __dodoRecordingPaused?: boolean
+    interface KiwiWindow extends Window {
+      __kiwiRecordAction: (data: string) => void
+      __kiwiTakeScreenshot: () => Promise<string | null>
+      __kiwiAssertionMode?: () => boolean
+      __kiwiDisableAssertionMode?: () => void
+      __kiwiCreateHighlighter?: () => void
+      __kiwiRecordingPaused?: boolean
     }
-    const recordAction = (window as unknown as DodoWindow).__dodoRecordAction
-    const takeScreenshot = (window as unknown as DodoWindow).__dodoTakeScreenshot
+    const recordAction = (window as unknown as KiwiWindow).__kiwiRecordAction
+    const takeScreenshot = (window as unknown as KiwiWindow).__kiwiTakeScreenshot
     
     // Helper to check if recording is paused
     const isRecordingPaused = (): boolean => {
-      const win = window as unknown as DodoWindow
-      return win.__dodoRecordingPaused === true
+      const win = window as unknown as KiwiWindow
+      return win.__kiwiRecordingPaused === true
     }
 
     // ===== Helper: Check if event is within widget =====
@@ -278,9 +278,9 @@ export function getInjectionScript(): () => void {
       const target = e.target as Element
       if (!target || isWithinWidget(target)) return
 
-      const win = window as unknown as DodoWindow
-      const widgetAssertMode = typeof win.__dodoAssertionMode === 'function'
-        ? win.__dodoAssertionMode()
+      const win = window as unknown as KiwiWindow
+      const widgetAssertMode = typeof win.__kiwiAssertionMode === 'function'
+        ? win.__kiwiAssertionMode()
         : false
       const assertMode = widgetAssertMode || e.metaKey === true || e.ctrlKey === true
 
@@ -293,8 +293,8 @@ export function getInjectionScript(): () => void {
         e.preventDefault()
         e.stopPropagation()
 
-        if (widgetAssertMode && typeof win.__dodoDisableAssertionMode === 'function') {
-          win.__dodoDisableAssertionMode()
+        if (widgetAssertMode && typeof win.__kiwiDisableAssertionMode === 'function') {
+          win.__kiwiDisableAssertionMode()
         }
       }
     }, true)
@@ -377,21 +377,21 @@ export function getInjectionScript(): () => void {
         if (isRecordingPaused()) {
           e.preventDefault()
           e.stopPropagation()
-          console.log('[Dodo Recorder] Screenshot blocked - recording is paused')
+          console.log('[KiwiGen] Screenshot blocked - recording is paused')
           return
         }
         
         const target = e.target as Element
         if (target && isWithinWidget(target)) return
 
-        console.log('[Dodo Recorder] Screenshot shortcut detected')
+        console.log('[KiwiGen] Screenshot shortcut detected')
         e.preventDefault()
         e.stopPropagation()
 
         try {
-          console.log('[Dodo Recorder] Calling takeScreenshot...')
+          console.log('[KiwiGen] Calling takeScreenshot...')
           const screenshotPath = await takeScreenshot()
-          console.log('[Dodo Recorder] takeScreenshot returned:', screenshotPath)
+          console.log('[KiwiGen] takeScreenshot returned:', screenshotPath)
 
           if (screenshotPath) {
             const actionData = JSON.stringify({
@@ -399,14 +399,14 @@ export function getInjectionScript(): () => void {
               screenshot: screenshotPath,
             })
             // Truncate path in log to avoid leaking full filesystem structure
-            console.log('[Dodo Recorder] Recording screenshot action (path truncated):', screenshotPath.slice(-40))
+            console.log('[KiwiGen] Recording screenshot action (path truncated):', screenshotPath.slice(-40))
             recordAction(actionData)
-            console.log('[Dodo Recorder] ✅ Screenshot action recorded successfully')
+            console.log('[KiwiGen] ✅ Screenshot action recorded successfully')
           } else {
-            console.error('[Dodo Recorder] ❌ Screenshot capture returned null')
+            console.error('[KiwiGen] ❌ Screenshot capture returned null')
           }
         } catch (error) {
-          console.error('[Dodo Recorder] ❌ Screenshot capture failed:', error)
+          console.error('[KiwiGen] ❌ Screenshot capture failed:', error)
         }
       }
     }, true)

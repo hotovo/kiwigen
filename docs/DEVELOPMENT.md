@@ -1,6 +1,6 @@
 # Development Guide
 
-Complete guide for developing Dodo Recorder - system architecture, implementation details, development workflow, and debugging.
+Complete guide for developing KiwiGen - system architecture, implementation details, development workflow, and debugging.
 
 ---
 
@@ -23,7 +23,7 @@ Complete guide for developing Dodo Recorder - system architecture, implementatio
 
 ### Two-Process Electron Model
 
-Dodo Recorder uses Electron's two-process model for security and separation of concerns:
+KiwiGen uses Electron's two-process model for security and separation of concerns:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -588,7 +588,7 @@ async write(session: SessionBundle): Promise<string> {
   const actionsJson = {
     _meta: {
       formatVersion: "2.0",
-      generatedBy: "Dodo Recorder",
+      generatedBy: "KiwiGen",
       sessionId: session.sessionId,
       startTime: session.startTime,
       startTimeISO: new Date(session.startTime).toISOString(),
@@ -653,8 +653,8 @@ interface AppSettings {
 ```
 
 **Location:**
-- macOS: `~/Library/Application Support/dodo-recorder/settings.json`
-- Windows: `%USERPROFILE%\AppData\Roaming\dodo-recorder\settings.json`
+- macOS: `~/Library/Application Support/kiwigen/settings.json`
+- Windows: `%USERPROFILE%\AppData\Roaming\kiwigen\settings.json`
 
 ### Runtime Dependency Manager (`electron/runtime/dependency-manager.ts`)
 
@@ -1145,7 +1145,7 @@ interface RecordedAction {
 
 **Widget exclusion:**
 ```typescript
-const WIDGET_HOST_ID = '__dodo-recorder-widget-host'
+const WIDGET_HOST_ID = '__kiwigen-widget-host'
 
 const isWithinWidget = (target: Element): boolean => {
   const widgetHost = document.getElementById(WIDGET_HOST_ID)
@@ -1174,9 +1174,9 @@ document.addEventListener('click', (e) => {
 **Shadow DOM structure:**
 ```typescript
 const widgetHost = document.createElement('div')
-widgetHost.id = '__dodo-recorder-widget-host'
+widgetHost.id = '__kiwigen-widget-host'
 widgetHost.style.cssText = 'position: fixed; z-index: 2147483647; pointer-events: none;'
-widgetHost.setAttribute('data-dodo-recorder', 'true')  // Mark as non-React element
+widgetHost.setAttribute('data-kiwigen', 'true')  // Mark as non-React element
 const shadow = widgetHost.attachShadow({ mode: 'closed' })
 ```
 
@@ -1210,7 +1210,7 @@ pauseResumeBtn.addEventListener('click', async (e) => {
 ```typescript
 // Main process calls updateWidgetState() via page.evaluate()
 await this.page.evaluate((state: 'paused' | 'recording') => {
-  const widget = document.querySelector('#__dodo-recorder-widget-host')
+  const widget = document.querySelector('#__kiwigen-widget-host')
   if (widget) {
     // Update visual state
     widget.classList.toggle('paused', state === 'paused')
@@ -1728,7 +1728,7 @@ To simulate a fresh install and verify that dependency downloading works correct
 
 **2. Delete the entire runtime-deps directory:**
 ```bash
-rm -rf ~/Library/Application\ Support/dodo-recorder/runtime-deps
+rm -rf ~/Library/Application\ Support/kiwigen/runtime-deps
 ```
 This removes all managed assets and the `install-state.json` tracking file.
 
@@ -1742,14 +1742,14 @@ On startup, `initialize()` recreates the directory, loads the remote manifest (f
 
 **Monitor progress in real-time:**
 ```bash
-tail -f ~/Library/Logs/dodo-recorder/main.log
+tail -f ~/Library/Logs/kiwigen/main.log
 ```
 Expected log entries: `[runtime] downloading:*` → `[runtime] verifying:*` → `[runtime] extracting:*` → `[runtime] done`
 
 **To reset only one artifact** (e.g. just the Whisper model):
 ```bash
-rm ~/Library/Application\ Support/dodo-recorder/runtime-deps/models/ggml-small.en.bin
-rm ~/Library/Application\ Support/dodo-recorder/runtime-deps/install-state.json
+rm ~/Library/Application\ Support/kiwigen/runtime-deps/models/ggml-small.en.bin
+rm ~/Library/Application\ Support/kiwigen/runtime-deps/install-state.json
 ```
 The `installAll()` loop skips artifacts where the file exists **and** the stored version matches the manifest — deleting `install-state.json` alone forces a full re-verification pass.
 
@@ -1764,20 +1764,20 @@ The `installAll()` loop skips artifacts where the file exists **and** the stored
 - Click folder icon to open logs folder in Finder/Explorer
 
 **Log file locations:**
-- macOS: `~/Library/Logs/dodo-recorder/main.log`
-- Windows: `%USERPROFILE%\AppData\Roaming\dodo-recorder\logs\main.log`
+- macOS: `~/Library/Logs/kiwigen/main.log`
+- Windows: `%USERPROFILE%\AppData\Roaming\kiwigen\logs\main.log`
 
 **Manual access:**
 
 macOS:
 ```bash
-tail -f ~/Library/Logs/dodo-recorder/main.log
-open ~/Library/Logs/dodo-recorder/main.log
+tail -f ~/Library/Logs/kiwigen/main.log
+open ~/Library/Logs/kiwigen/main.log
 ```
 
 Windows (PowerShell):
 ```powershell
-Get-Content "$env:USERPROFILE\AppData\Roaming\dodo-recorder\logs\main.log" -Tail 50 -Wait
+Get-Content "$env:USERPROFILE\AppData\Roaming\kiwigen\logs\main.log" -Tail 50 -Wait
 ```
 
 ### Log Format
@@ -1788,7 +1788,7 @@ Get-Content "$env:USERPROFILE\AppData\Roaming\dodo-recorder\logs\main.log" -Tail
 
 **Example:**
 ```
-[2026-01-16 11:30:15.234] [INFO] Dodo Recorder Starting
+[2026-01-16 11:30:15.234] [INFO] KiwiGen Starting
 [2026-01-16 11:30:15.245] [INFO] App Version: 0.3.0
 [2026-01-16 11:30:20.567] [ERROR] Failed to start recording: URL validation failed
 ```
@@ -1798,13 +1798,13 @@ Get-Content "$env:USERPROFILE\AppData\Roaming\dodo-recorder\logs\main.log" -Tail
 **Startup:**
 ```
 ================================================================================
-Dodo Recorder Starting
+KiwiGen Starting
 ================================================================================
 App Version: 0.3.0
 Electron: 28.x.x
 Platform: darwin arm64
 Environment: production
-Log File: /Users/xxx/Library/Logs/dodo-recorder/main.log
+Log File: /Users/xxx/Library/Logs/kiwigen/main.log
 ================================================================================
 ```
 
@@ -1985,7 +1985,7 @@ interface ActionsJson {
 {
   "_meta": {
     "formatVersion": "2.0",
-    "generatedBy": "Dodo Recorder",
+    "generatedBy": "KiwiGen",
     "sessionId": "session-2026-01-23-102150",
     "startTime": 1737628910000,
     "startTimeISO": "2026-01-23T10:21:50.000Z",
@@ -2301,7 +2301,7 @@ export const WIDGET_PADDING = 20
 export const SNAP_DISTANCE = 20
 
 // IDs and selectors
-export const WIDGET_HOST_ID = '__dodo-recorder-widget-host'
+export const WIDGET_HOST_ID = '__kiwigen-widget-host'
 export const HIGHLIGHT_HOST_ID = '__dodo-highlight-overlay-host'
 export const PAUSE_RESUME_BTN_SELECTOR = '#pause-resume-btn'
 export const SCREENSHOT_BTN_SELECTOR = '#screenshot-btn'
@@ -2347,5 +2347,5 @@ export const WIDGET_TEXT = {
 ## Additional Resources
 
 - **User Guide:** See `USER_GUIDE.md` for feature documentation
-- **GitHub Repository:** [dodosaurus/dodo-recorder](https://github.com/dodosaurus/dodo-recorder)
-- **Issue Reporting:** [GitHub Issues](https://github.com/dodosaurus/dodo-recorder/issues)
+- **GitHub Repository:** [hotovo/kiwigen](https://github.com/hotovo/kiwigen)
+- **Issue Reporting:** [GitHub Issues](https://github.com/hotovo/kiwigen/issues)

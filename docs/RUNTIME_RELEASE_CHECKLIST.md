@@ -25,7 +25,7 @@ git push origin vX.Y.Z
 
 ## 2) Publish GitHub Release
 
-- [ ] Open `https://github.com/dodosaurus/dodo-recorder/releases/new`
+- [ ] Open `https://github.com/hotovo/kiwigen/releases/new`
 - [ ] Select tag `vX.Y.Z`
 - [ ] Publish release
 
@@ -40,10 +40,10 @@ When release is published, CI will:
 1. Build signed/notarized macOS installer artifacts.
 2. Build unsigned Windows installer artifacts.
 3. Package runtime assets on both platforms:
-   - `dodo-runtime-whisper-model-small.en.bin`
-   - `dodo-runtime-whisper-binary-darwin-arm64`
-   - `dodo-runtime-whisper-binary-win32-x64.zip`
-   - `dodo-runtime-playwright-<platform>-chromium-*.zip`
+   - `kiwigen-runtime-whisper-model-small.en.bin`
+   - `kiwigen-runtime-whisper-binary-darwin-arm64`
+   - `kiwigen-runtime-whisper-binary-win32-x64.zip`
+   - `kiwigen-runtime-playwright-<platform>-chromium-*.zip`
    - platform metadata JSON files
 4. Generate combined `runtime-manifest.json` from both metadata files.
 5. Verify manifest structure.
@@ -56,16 +56,16 @@ When release is published, CI will:
 
 - [ ] In the release page, confirm these assets exist:
   - `runtime-manifest.json`
-  - `dodo-runtime-whisper-model-small.en.bin`
-  - `dodo-runtime-whisper-binary-darwin-arm64`
-  - `dodo-runtime-whisper-binary-win32-x64.zip`
-  - `dodo-runtime-playwright-darwin-arm64-chromium-*.zip`
-  - `dodo-runtime-playwright-win32-x64-chromium-*.zip`
+  - `kiwigen-runtime-whisper-model-small.en.bin`
+  - `kiwigen-runtime-whisper-binary-darwin-arm64`
+  - `kiwigen-runtime-whisper-binary-win32-x64.zip`
+  - `kiwigen-runtime-playwright-darwin-arm64-chromium-*.zip`
+  - `kiwigen-runtime-playwright-win32-x64-chromium-*.zip`
   - macOS installer artifacts (`.dmg`, `.zip`)
   - Windows installer artifacts (`.exe`)
 - [ ] Smoke test first-launch setup from a clean runtime cache:
-  - macOS: `~/Library/Application Support/dodo-recorder/runtime-deps/`
-  - Windows: `%USERPROFILE%\AppData\Roaming\dodo-recorder\runtime-deps\`
+  - macOS: `~/Library/Application Support/kiwigen/runtime-deps/`
+  - Windows: `%USERPROFILE%\AppData\Roaming\kiwigen\runtime-deps\`
 
 ---
 

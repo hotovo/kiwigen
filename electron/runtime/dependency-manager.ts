@@ -412,13 +412,13 @@ export class RuntimeDependencyManager extends EventEmitter {
   }
 
   private getRemoteManifestUrl(): string {
-    const envUrl = process.env.DODO_RUNTIME_MANIFEST_URL?.trim()
+    const envUrl = process.env.KIWIGEN_RUNTIME_MANIFEST_URL?.trim()
     if (envUrl) {
       return envUrl
     }
 
     const releaseTag = `v${app.getVersion()}`
-    return `https://github.com/dodosaurus/dodo-recorder/releases/download/${releaseTag}/runtime-manifest.json`
+    return `https://github.com/hotovo/kiwigen/releases/download/${releaseTag}/runtime-manifest.json`
   }
 
   private validateManifest(manifest: RuntimeManifest): void {

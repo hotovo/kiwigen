@@ -158,11 +158,11 @@ function main() {
 
   ensureDir(outputDir);
 
-  const modelFileName = 'dodo-runtime-whisper-model-small.en.bin';
+  const modelFileName = 'kiwigen-runtime-whisper-model-small.en.bin';
   const binaryFileName = platform === 'darwin-arm64'
-    ? 'dodo-runtime-whisper-binary-darwin-arm64'
-    : 'dodo-runtime-whisper-binary-win32-x64.zip';
-  const chromiumZipFileName = `dodo-runtime-playwright-${platform}-${chromiumFolderName}.zip`;
+    ? 'kiwigen-runtime-whisper-binary-darwin-arm64'
+    : 'kiwigen-runtime-whisper-binary-win32-x64.zip';
+  const chromiumZipFileName = `kiwigen-runtime-playwright-${platform}-${chromiumFolderName}.zip`;
 
   const modelOutputPath = path.join(outputDir, modelFileName);
   const binaryOutputPath = path.join(outputDir, binaryFileName);

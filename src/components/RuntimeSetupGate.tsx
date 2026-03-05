@@ -39,7 +39,7 @@ export function RuntimeSetupGate({
               <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">First launch setup</p>
               <h1 className="text-2xl font-semibold text-foreground">Install runtime dependencies</h1>
               <p className="text-sm text-muted-foreground">
-                Dodo Recorder needs local Whisper + Chromium assets before recording can start.
+                KiwiGen needs local Whisper + Chromium assets before recording can start.
               </p>
             </div>
 

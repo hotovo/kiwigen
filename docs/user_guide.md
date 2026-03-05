@@ -1,6 +1,6 @@
 # User Guide
 
-Complete guide for using Dodo Recorder to capture browser interactions and voice commentary for AI-assisted test generation.
+Complete guide for using KiwiGen to capture browser interactions and voice commentary for AI-assisted test generation.
 
 ---
 
@@ -21,7 +21,7 @@ Complete guide for using Dodo Recorder to capture browser interactions and voice
 
 ## Features Overview
 
-Dodo Recorder captures your manual browser testing sessions with voice commentary and produces AI-ready session bundles for automated test generation.
+KiwiGen captures your manual browser testing sessions with voice commentary and produces AI-ready session bundles for automated test generation.
 
 **Key Capabilities:**
 
@@ -42,7 +42,7 @@ Dodo Recorder captures your manual browser testing sessions with voice commentar
 
 ## First-Launch Setup
 
-On fresh installation, Dodo Recorder downloads runtime dependencies before enabling recording features.
+On fresh installation, KiwiGen downloads runtime dependencies before enabling recording features.
 
 ### What Gets Downloaded
 
@@ -53,12 +53,12 @@ Runtime dependencies are downloaded to your user data directory and managed loca
 - **Playwright Chromium** - Browser runtime for recording automation
 
 **Installation locations:**
-- macOS: `~/Library/Application Support/dodo-recorder/runtime-deps/`
-- Windows: `%USERPROFILE%\AppData\Roaming\dodo-recorder\runtime-deps\`
+- macOS: `~/Library/Application Support/kiwigen/runtime-deps/`
+- Windows: `%USERPROFILE%\AppData\Roaming\kiwigen\runtime-deps\`
 
 ### Setup Process
 
-1. **Launch Dodo Recorder** - Setup screen appears automatically on first run
+1. **Launch KiwiGen** - Setup screen appears automatically on first run
 2. **Click "Install Runtime Dependencies"** - Downloads begin automatically
 3. **Wait for completion** - Progress shows download/verification/extraction phases
 4. **Recording becomes available** - Once all dependencies are ready, setup screen closes and recorder UI appears
@@ -329,7 +329,7 @@ session-YYYY-MM-DD-HHMMSS/
 {
   "_meta": {
     "formatVersion": "2.0",
-    "generatedBy": "Dodo Recorder",
+    "generatedBy": "KiwiGen",
     "sessionId": "session-2026-01-23-102150",
     "startTime": 1737628910000,
     "startTimeISO": "2026-01-23T10:21:50.000Z",
@@ -528,20 +528,20 @@ Click "Reset" to start a fresh recording session:
 - Click folder icon to open logs folder in Finder/Explorer
 
 **Log file locations:**
-- macOS: `~/Library/Logs/dodo-recorder/main.log`
-- Windows: `%USERPROFILE%\AppData\Roaming\dodo-recorder\logs\main.log`
+- macOS: `~/Library/Logs/kiwigen/main.log`
+- Windows: `%USERPROFILE%\AppData\Roaming\kiwigen\logs\main.log`
 
 **Terminal access:**
 
 macOS:
 ```bash
-tail -f ~/Library/Logs/dodo-recorder/main.log
-open ~/Library/Logs/dodo-recorder/main.log
+tail -f ~/Library/Logs/kiwigen/main.log
+open ~/Library/Logs/kiwigen/main.log
 ```
 
 Windows (PowerShell):
 ```powershell
-Get-Content "$env:USERPROFILE\AppData\Roaming\dodo-recorder\logs\main.log" -Tail 50 -Wait
+Get-Content "$env:USERPROFILE\AppData\Roaming\kiwigen\logs\main.log" -Tail 50 -Wait
 ```
 
 ### DevTools (Advanced)
@@ -565,7 +565,7 @@ When reporting issues, always include:
 
 **Collect logs (macOS):**
 ```bash
-tail -n 200 ~/Library/Logs/dodo-recorder/main.log | pbcopy
+tail -n 200 ~/Library/Logs/kiwigen/main.log | pbcopy
 ```
 
 ---
@@ -573,5 +573,5 @@ tail -n 200 ~/Library/Logs/dodo-recorder/main.log | pbcopy
 ## Additional Resources
 
 - **Development Documentation:** See `DEVELOPMENT.md` for architecture and implementation details
-- **GitHub Repository:** [dodosaurus/dodo-recorder](https://github.com/dodosaurus/dodo-recorder)
-- **Issue Reporting:** [GitHub Issues](https://github.com/dodosaurus/dodo-recorder/issues)
+- **GitHub Repository:** [hotovo/kiwigen](https://github.com/hotovo/kiwigen)
+- **Issue Reporting:** [GitHub Issues](https://github.com/hotovo/kiwigen/issues)

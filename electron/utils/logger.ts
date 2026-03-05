@@ -1,8 +1,8 @@
 /**
  * Production-ready logger using electron-log
  * Automatically logs to files in standard OS locations:
- * - macOS: ~/Library/Logs/dodo-recorder/main.log
- * - Windows: %USERPROFILE%\AppData\Roaming\dodo-recorder\logs\main.log
+ * - macOS: ~/Library/Logs/kiwigen/main.log
+ * - Windows: %USERPROFILE%\AppData\Roaming\kiwigen\logs\main.log
  *
  * Features:
  * - Automatic file rotation
@@ -39,7 +39,7 @@ export function logStartupInfo(): void {
   startupLogged = true
   
   log.info('='.repeat(80))
-  log.info('Dodo Recorder Starting')
+  log.info('KiwiGen Starting')
   log.info('='.repeat(80))
   log.info(`App Version: ${app.getVersion()}`)
   log.info(`Electron: ${process.versions.electron}`)

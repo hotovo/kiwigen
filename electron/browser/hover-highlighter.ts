@@ -13,7 +13,7 @@
  * - Performance optimized with RAF and passive event listeners
  * 
  * Integration:
- * - Checks window.__dodoAssertionMode() for widget mode state
+ * - Checks window.__kiwiAssertionMode() for widget mode state
  * - Tracks Cmd/Ctrl key press state for transient mode
  * - Excludes recording widget from highlighting
  * - Does not interfere with click event recording
@@ -24,9 +24,9 @@
  * @see plans/hover-highlighting-addendum.md - Dual trigger analysis
  */
 
-interface DodoWindow extends Window {
-  __dodoAssertionMode?: () => boolean
-  __dodoDisableAssertionMode?: () => void
+interface KiwiWindow extends Window {
+  __kiwiAssertionMode?: () => boolean
+  __kiwiDisableAssertionMode?: () => void
 }
 
 /**
@@ -35,8 +35,8 @@ interface DodoWindow extends Window {
  */
 export function getHighlighterScript(): () => void {
   return () => {
-    // Type guard for DodoWindow
-    const win = window as DodoWindow
+    // Type guard for KiwiWindow
+    const win = window as KiwiWindow
 
     // Debug flag - set to false to disable console logs in production
     const DEBUG = false
@@ -47,14 +47,14 @@ export function getHighlighterScript(): () => void {
     let rafId: number | null = null
 
     // Make initialization idempotent - check if already exists
-    if (document.getElementById('__dodo-highlight-overlay-host')) {
-      if (DEBUG) console.log('[Dodo Highlighter] Already initialized, skipping')
+    if (document.getElementById('__kiwi-highlight-overlay-host')) {
+      if (DEBUG) console.log('[Kiwi Highlighter] Already initialized, skipping')
       return
     }
 
     // Shadow DOM host for isolation
     const highlightHost = document.createElement('div')
-    highlightHost.id = '__dodo-highlight-overlay-host'
+    highlightHost.id = '__kiwi-highlight-overlay-host'
     highlightHost.style.cssText = `
       position: fixed;
       top: 0;
@@ -111,8 +111,8 @@ export function getHighlighterScript(): () => void {
       let current: Element | null = element
       while (current) {
         if (
-          current.id === '__dodo-recorder-widget-host' ||
-          current.id === '__dodo-highlight-overlay-host'
+          current.id === '__kiwi-widget-host' ||
+          current.id === '__kiwi-highlight-overlay-host'
         ) {
           return true
         }
@@ -170,7 +170,7 @@ export function getHighlighterScript(): () => void {
     function updateOverlay(element: Element): void {
       const rect = element.getBoundingClientRect()
 
-      if (DEBUG) console.log('[Dodo Highlighter] Updating overlay for:', element.tagName, 'Rect:', rect)
+      if (DEBUG) console.log('[Kiwi Highlighter] Updating overlay for:', element.tagName, 'Rect:', rect)
 
       // Show overlay
       overlay.style.display = 'block'
@@ -202,7 +202,7 @@ export function getHighlighterScript(): () => void {
       }
       label.style.top = `${labelTop}px`
       
-      if (DEBUG) console.log('[Dodo Highlighter] Overlay displayed at:', overlay.style.left, overlay.style.top, overlay.style.width, overlay.style.height)
+      if (DEBUG) console.log('[Kiwi Highlighter] Overlay displayed at:', overlay.style.left, overlay.style.top, overlay.style.width, overlay.style.height)
     }
 
     /**
@@ -223,7 +223,7 @@ export function getHighlighterScript(): () => void {
      * Check if assertion mode is active (dual trigger check)
      */
     function isAssertionModeActive(): boolean {
-      const widgetMode = win.__dodoAssertionMode?.() || false
+      const widgetMode = win.__kiwiAssertionMode?.() || false
       const keyMode = isCommandKeyPressed
       return widgetMode || keyMode
     }
@@ -279,7 +279,7 @@ export function getHighlighterScript(): () => void {
           return
         }
 
-        if (DEBUG) console.log('[Dodo Highlighter] Hovering over:', target.tagName, 'Assertion mode:', assertionActive)
+        if (DEBUG) console.log('[Kiwi Highlighter] Hovering over:', target.tagName, 'Assertion mode:', assertionActive)
         currentTarget = target
         scheduleUpdate(target)
       },
@@ -295,7 +295,7 @@ export function getHighlighterScript(): () => void {
         if (e.metaKey || e.ctrlKey) {
           if (!isCommandKeyPressed) {
             isCommandKeyPressed = true
-            if (DEBUG) console.log('[Dodo Highlighter] Transient mode activated (key press)')
+            if (DEBUG) console.log('[Kiwi Highlighter] Transient mode activated (key press)')
           }
         }
       },
@@ -312,9 +312,9 @@ export function getHighlighterScript(): () => void {
         if (!e.metaKey && !e.ctrlKey) {
           if (isCommandKeyPressed) {
             isCommandKeyPressed = false
-            if (DEBUG) console.log('[Dodo Highlighter] Transient mode deactivated (key release)')
+            if (DEBUG) console.log('[Kiwi Highlighter] Transient mode deactivated (key release)')
             // Immediately hide overlay if widget mode is also off
-            if (!win.__dodoAssertionMode?.()) {
+            if (!win.__kiwiAssertionMode?.()) {
               hideOverlay()
             }
           }
@@ -329,9 +329,9 @@ export function getHighlighterScript(): () => void {
     window.addEventListener('blur', () => {
       if (isCommandKeyPressed) {
         isCommandKeyPressed = false
-        if (DEBUG) console.log('[Dodo Highlighter] Transient mode deactivated (window blur)')
+        if (DEBUG) console.log('[Kiwi Highlighter] Transient mode deactivated (window blur)')
         // Hide overlay if widget mode is also off
-        if (!win.__dodoAssertionMode?.()) {
+        if (!win.__kiwiAssertionMode?.()) {
           hideOverlay()
         }
       }
@@ -360,7 +360,7 @@ export function getHighlighterScript(): () => void {
       }
     }, 100)
 
-    if (DEBUG) console.log('[Dodo Highlighter] Hover highlighting initialized with dual trigger mode')
+    if (DEBUG) console.log('[Kiwi Highlighter] Hover highlighting initialized with dual trigger mode')
   }
 }
 
@@ -370,7 +370,7 @@ export function getHighlighterScript(): () => void {
 export function getHighlighterInitScript(): () => void {
   return () => {
     const DEBUG = false // Match debug flag from main script
-    const HIGHLIGHTER_HOST_ID = '__dodo-highlight-overlay-host'
+    const HIGHLIGHTER_HOST_ID = '__kiwi-highlight-overlay-host'
     let observer: MutationObserver | null = null
     
     const createHighlighter = () => {
@@ -380,11 +380,11 @@ export function getHighlighterInitScript(): () => void {
         return
       }
       
-      if (typeof (window as any).__dodoCreateHighlighter === 'function') {
+      if (typeof (window as any).__kiwiCreateHighlighter === 'function') {
         if (DEBUG) console.log('[Dodo Highlighter Init] Creating highlighter...')
-        ;(window as any).__dodoCreateHighlighter()
+        ;(window as any).__kiwiCreateHighlighter()
       } else {
-        console.warn('[Dodo Highlighter Init] __dodoCreateHighlighter not available')
+        console.warn('[Dodo Highlighter Init] __kiwiCreateHighlighter not available')
       }
     }
     
@@ -404,7 +404,7 @@ export function getHighlighterInitScript(): () => void {
         // Small delay to ensure page scripts have loaded and body is ready
         setTimeout(checkBodyAndCreate, 100)
       } catch (error) {
-        console.error('[Dodo Highlighter] Failed to initialize:', error)
+        console.error('[Kiwi Highlighter] Failed to initialize:', error)
       }
     }
     
@@ -418,7 +418,7 @@ export function getHighlighterInitScript(): () => void {
         return
       }
       
-      if (DEBUG) console.log('[Dodo Highlighter] Setting up highlighter monitor...')
+      if (DEBUG) console.log('[Kiwi Highlighter] Setting up highlighter monitor...')
       
       // Use MutationObserver to watch for highlighter removal
       observer = new MutationObserver((mutations) => {
@@ -426,7 +426,7 @@ export function getHighlighterInitScript(): () => void {
         const highlighterExists = document.getElementById(HIGHLIGHTER_HOST_ID)
         
         if (!highlighterExists && document.body) {
-          if (DEBUG) console.log('[Dodo Highlighter] Highlighter removed from DOM, recreating...')
+          if (DEBUG) console.log('[Kiwi Highlighter] Highlighter removed from DOM, recreating...')
           createHighlighter()
         }
       })
@@ -450,7 +450,7 @@ export function getHighlighterInitScript(): () => void {
       setInterval(() => {
         const highlighterExists = document.getElementById(HIGHLIGHTER_HOST_ID)
         if (!highlighterExists && document.body) {
-          if (DEBUG) console.log('[Dodo Highlighter] Highlighter missing (periodic check), recreating...')
+          if (DEBUG) console.log('[Kiwi Highlighter] Highlighter missing (periodic check), recreating...')
           createHighlighter()
         }
       }, 2000)

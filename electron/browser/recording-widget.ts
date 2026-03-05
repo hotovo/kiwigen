@@ -17,37 +17,37 @@ export function getWidgetScript(): () => void {
     }
 
     // Constants must be defined inside the function scope for injection
-    const WIDGET_HOST_ID = '__dodo-recorder-widget-host'
+    const WIDGET_HOST_ID = '__kiwi-widget-host'
     
     // Window interface for injected functions
     // NOTE: Keep in sync with shared/browser-context.ts (cannot import at runtime)
-    interface DodoWindow extends Window {
-      __dodoRecordAction: (data: string) => void
-      __dodoTakeScreenshot: () => Promise<string | null>
-      __dodoAssertionMode: () => boolean
-      __dodoDisableAssertionMode: () => void
-      __dodoAudioActive: boolean
-      __dodoRecordingPaused?: boolean
+    interface KiwiWindow extends Window {
+      __kiwiRecordAction: (data: string) => void
+      __kiwiTakeScreenshot: () => Promise<string | null>
+      __kiwiAssertionMode: () => boolean
+      __kiwiDisableAssertionMode: () => void
+      __kiwiAudioActive: boolean
+      __kiwiRecordingPaused?: boolean
       /** Session token injected by recorder.ts — must be passed to pause/resume. */
-      __dodoSessionToken?: string
-      __dodoPauseRecording?: (token: string) => Promise<void>
-      __dodoResumeRecording?: (token: string) => Promise<void>
-      __dodoCreateHighlighter?: () => void
+      __kiwiSessionToken?: string
+      __kiwiPauseRecording?: (token: string) => Promise<void>
+      __kiwiResumeRecording?: (token: string) => Promise<void>
+      __kiwiCreateHighlighter?: () => void
     }
 
     // Prevent duplicate widget creation
     if (document.getElementById(WIDGET_HOST_ID)) {
-      console.log('[Dodo Recorder] Widget already exists, skipping creation')
+      console.log('[KiwiGen] Widget already exists, skipping creation')
       return
     }
 
     // Initialize state globals if not already set
-    const win = window as unknown as DodoWindow
-    if (typeof win.__dodoAudioActive === 'undefined') {
-      win.__dodoAudioActive = false
+    const win = window as unknown as KiwiWindow
+    if (typeof win.__kiwiAudioActive === 'undefined') {
+      win.__kiwiAudioActive = false
     }
-    if (typeof win.__dodoRecordingPaused === 'undefined') {
-      win.__dodoRecordingPaused = false
+    if (typeof win.__kiwiRecordingPaused === 'undefined') {
+      win.__kiwiRecordingPaused = false
     }
     
     // Detect OS for tooltip text
@@ -55,8 +55,8 @@ export function getWidgetScript(): () => void {
     const modKey = isMac ? 'Cmd' : 'Ctrl'
     
     // Access injected functions
-    const recordAction = (window as unknown as DodoWindow).__dodoRecordAction
-    const takeScreenshot = (window as unknown as DodoWindow).__dodoTakeScreenshot
+    const recordAction = (window as unknown as KiwiWindow).__kiwiRecordAction
+    const takeScreenshot = (window as unknown as KiwiWindow).__kiwiTakeScreenshot
     
     // Create widget host element
     const widgetHost = document.createElement('div')
@@ -307,7 +307,7 @@ export function getWidgetScript(): () => void {
     voiceIndicator.id = 'voice-indicator'
     
     // Check initial audio state and show indicator if active
-    if (win.__dodoAudioActive) {
+    if (win.__kiwiAudioActive) {
       voiceIndicator.classList.add('active')
     }
     
@@ -318,11 +318,11 @@ export function getWidgetScript(): () => void {
       pollCount++
       
       // Check if audio is now active and indicator is not showing
-      if (win.__dodoAudioActive && !voiceIndicator.classList.contains('active')) {
-        const isPaused = win.__dodoRecordingPaused === true
+      if (win.__kiwiAudioActive && !voiceIndicator.classList.contains('active')) {
+        const isPaused = win.__kiwiRecordingPaused === true
         if (!isPaused) {
           voiceIndicator.classList.add('active')
-          console.log('[Dodo Widget] Audio indicator activated via polling')
+          console.log('[Kiwi Widget] Audio indicator activated via polling')
         }
       }
       
@@ -344,9 +344,9 @@ export function getWidgetScript(): () => void {
     // Append to body immediately to ensure it renders
     try {
       document.body.appendChild(widgetHost)
-      console.log('[Dodo Recorder] Widget host appended to body')
+      console.log('[KiwiGen] Widget host appended to body')
     } catch (error) {
-      console.error('[Dodo Recorder] Failed to append widget to body:', error)
+      console.error('[KiwiGen] Failed to append widget to body:', error)
       return
     }
     
@@ -420,16 +420,16 @@ export function getWidgetScript(): () => void {
     pauseResumeBtn.addEventListener('click', async (e) => {
       e.stopPropagation()
 
-      const win = window as unknown as DodoWindow
-      const isPaused = win.__dodoRecordingPaused === true
-      const sessionToken = win.__dodoSessionToken ?? ''
+      const win = window as unknown as KiwiWindow
+      const isPaused = win.__kiwiRecordingPaused === true
+      const sessionToken = win.__kiwiSessionToken ?? ''
 
       try {
         if (isPaused) {
           // Resume
-          if (typeof win.__dodoResumeRecording === 'function') {
-            await win.__dodoResumeRecording(sessionToken)
-            console.log('[Dodo Widget] Recording resumed')
+          if (typeof win.__kiwiResumeRecording === 'function') {
+            await win.__kiwiResumeRecording(sessionToken)
+            console.log('[Kiwi Widget] Recording resumed')
             pauseResumeBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <rect x="6" y="4" width="4" height="16" fill="rgba(100, 116, 139, 0.8)" stroke="rgba(148, 163, 184, 0.9)"></rect>
               <rect x="14" y="4" width="4" height="16" fill="rgba(100, 116, 139, 0.8)" stroke="rgba(148, 163, 184, 0.9)"></rect>
@@ -441,15 +441,15 @@ export function getWidgetScript(): () => void {
             // Remove paused visual state
             widget.classList.remove('paused')
             // Show voice indicator if audio is active
-            if (win.__dodoAudioActive) {
+            if (win.__kiwiAudioActive) {
               voiceIndicator.classList.add('active')
             }
           }
         } else {
           // Pause
-          if (typeof win.__dodoPauseRecording === 'function') {
-            await win.__dodoPauseRecording(sessionToken)
-            console.log('[Dodo Widget] Recording paused')
+          if (typeof win.__kiwiPauseRecording === 'function') {
+            await win.__kiwiPauseRecording(sessionToken)
+            console.log('[Kiwi Widget] Recording paused')
             pauseResumeBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <polygon points="5 3 19 12 5 21 5 3" fill="rgba(100, 116, 139, 0.8)" stroke="rgba(148, 163, 184, 0.9)"></polygon>
             </svg>`
@@ -464,7 +464,7 @@ export function getWidgetScript(): () => void {
           }
         }
       } catch (error) {
-        console.error('[Dodo Widget] Pause/Resume failed:', error)
+        console.error('[Kiwi Widget] Pause/Resume failed:', error)
       }
     })
 
@@ -484,7 +484,7 @@ export function getWidgetScript(): () => void {
           }))
         }
       } catch (error) {
-        console.error('[Dodo Widget] Screenshot failed:', error)
+        console.error('[Kiwi Widget] Screenshot failed:', error)
       }
     })
 
@@ -539,13 +539,13 @@ export function getWidgetScript(): () => void {
     })
     
     // Expose assertion mode functions to window
-    ;(window as unknown as DodoWindow).__dodoAssertionMode = () => assertionModeActive
-    ;(window as unknown as DodoWindow).__dodoDisableAssertionMode = () => {
+    ;(window as unknown as KiwiWindow).__kiwiAssertionMode = () => assertionModeActive
+    ;(window as unknown as KiwiWindow).__kiwiDisableAssertionMode = () => {
       assertionModeActive = false
       assertionBtn.classList.remove('active')
     }
 
-    console.log('[Dodo Recorder] Widget initialized')
+    console.log('[KiwiGen] Widget initialized')
   }
 }
 
@@ -555,7 +555,7 @@ export function getWidgetScript(): () => void {
  */
 export function getWidgetInitScript(): () => void {
   return () => {
-    const WIDGET_HOST_ID = '__dodo-recorder-widget-host'
+    const WIDGET_HOST_ID = '__kiwi-widget-host'
     let observer: MutationObserver | null = null
     
     const createWidget = () => {
@@ -565,11 +565,11 @@ export function getWidgetInitScript(): () => void {
         return
       }
       
-      if (typeof (window as any).__dodoCreateWidget === 'function') {
+      if (typeof (window as any).__kiwiCreateWidget === 'function') {
         console.log('[Dodo Recorder Init] Creating widget...')
-        ;(window as any).__dodoCreateWidget()
+        ;(window as any).__kiwiCreateWidget()
       } else {
-        console.warn('[Dodo Recorder Init] __dodoCreateWidget not available')
+        console.warn('[Dodo Recorder Init] __kiwiCreateWidget not available')
       }
     }
     
@@ -589,7 +589,7 @@ export function getWidgetInitScript(): () => void {
         // Small delay to ensure page scripts have loaded and body is ready
         setTimeout(checkBodyAndCreate, 100)
       } catch (error) {
-        console.error('[Dodo Recorder] Failed to create widget:', error)
+        console.error('[KiwiGen] Failed to create widget:', error)
       }
     }
     
@@ -603,7 +603,7 @@ export function getWidgetInitScript(): () => void {
         return
       }
       
-      console.log('[Dodo Recorder] Setting up widget monitor...')
+      console.log('[KiwiGen] Setting up widget monitor...')
       
       // Use MutationObserver to watch for widget removal
       observer = new MutationObserver((mutations) => {
@@ -611,7 +611,7 @@ export function getWidgetInitScript(): () => void {
         const widgetExists = document.getElementById(WIDGET_HOST_ID)
         
         if (!widgetExists && document.body) {
-          console.log('[Dodo Recorder] Widget removed from DOM, recreating...')
+          console.log('[KiwiGen] Widget removed from DOM, recreating...')
           createWidget()
         }
       })
@@ -635,7 +635,7 @@ export function getWidgetInitScript(): () => void {
       setInterval(() => {
         const widgetExists = document.getElementById(WIDGET_HOST_ID)
         if (!widgetExists && document.body) {
-          console.log('[Dodo Recorder] Widget missing (periodic check), recreating...')
+          console.log('[KiwiGen] Widget missing (periodic check), recreating...')
           createWidget()
         }
       }, 2000)

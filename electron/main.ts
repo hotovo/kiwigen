@@ -154,7 +154,7 @@ async function initializeApp(): Promise<void> {
     updateTimeWindows(settings.getVoiceDistributionConfig())
     
     logger.info('Cleaning up old temp files...')
-    const tempDir = path.join(app.getPath('temp'), 'dodo-recorder')
+    const tempDir = path.join(app.getPath('temp'), 'kiwigen')
     await cleanupOldTempFiles(tempDir, 24 * 60 * 60 * 1000)
     
     logger.info('Creating main window...')
@@ -170,8 +170,8 @@ async function initializeApp(): Promise<void> {
     }
     
     dialog.showErrorBox(
-      'Dodo Recorder - Startup Error',
-      `Failed to start Dodo Recorder:\n\n${errorMessage}\n\nPlease check the logs for more details.\n\nLog location: ${logger.getLogPath()}`
+      'KiwiGen - Startup Error',
+      `Failed to start KiwiGen:\n\n${errorMessage}\n\nPlease check the logs for more details.\n\nLog location: ${logger.getLogPath()}`
     )
     
     app.quit()

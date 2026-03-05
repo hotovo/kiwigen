@@ -1,5 +1,5 @@
 /**
- * Shared type definitions for the Dodo Recorder browser context.
+ * Shared type definitions for the KiwiGen browser context.
  *
  * This interface describes the globals that the Electron main process injects
  * into the recorded browser page via `page.exposeFunction()` and
@@ -11,34 +11,37 @@
  *
  * NOTE: The browser-injected scripts (injected-script, recording-widget,
  * hover-highlighter) are serialised as strings and cannot import this module
- * at runtime.  They maintain a local `interface DodoWindow` that must stay in
+ * at runtime.  They maintain a local `interface KiwiWindow` that must stay in
  * sync with the canonical definition here.
  */
-export interface DodoWindow extends Window {
+export interface KiwiWindow extends Window {
   /** Records a user action.  Payload is a JSON-serialised partial RecordedAction. */
-  __dodoRecordAction?: (data: string) => void
+  __kiwiRecordAction?: (data: string) => void
   /** Captures a screenshot and returns the filename, or null on failure. */
-  __dodoTakeScreenshot?: () => Promise<string | null>
+  __kiwiTakeScreenshot?: () => Promise<string | null>
   /** Returns whether assertion mode is currently active. */
-  __dodoAssertionMode?: () => boolean
+  __kiwiAssertionMode?: () => boolean
   /** Disables assertion mode. */
-  __dodoDisableAssertionMode?: () => void
+  __kiwiDisableAssertionMode?: () => void
   /** Whether audio recording is currently active. */
-  __dodoAudioActive?: boolean
+  __kiwiAudioActive?: boolean
   /** Whether the recording session is currently paused. */
-  __dodoRecordingPaused?: boolean
+  __kiwiRecordingPaused?: boolean
   /** Session token — must be passed to pause/resume calls to prevent spoofing. */
-  __dodoSessionToken?: string
+  __kiwiSessionToken?: string
   /** Pauses the current recording session. Requires the session token. */
-  __dodoPauseRecording?: (token: string) => Promise<void>
+  __kiwiPauseRecording?: (token: string) => Promise<void>
   /** Resumes the current recording session. Requires the session token. */
-  __dodoResumeRecording?: (token: string) => Promise<void>
+  __kiwiResumeRecording?: (token: string) => Promise<void>
   /** Factory function injected by recorder.ts for lazy widget creation. */
-  __dodoCreateWidget?: () => void
+  __kiwiCreateWidget?: () => void
   /** Factory function injected by recorder.ts for lazy highlighter creation. */
-  __dodoCreateHighlighter?: () => void
+  __kiwiCreateHighlighter?: () => void
   /** Shows the audio equalizer animation in the widget. */
-  __dodoShowEqualizer?: () => void
+  __kiwiShowEqualizer?: () => void
   /** Hides the audio equalizer animation in the widget. */
-  __dodoHideEqualizer?: () => void
+  __kiwiHideEqualizer?: () => void
 }
+
+// Legacy alias for backward compatibility during transition
+export type DodoWindow = KiwiWindow

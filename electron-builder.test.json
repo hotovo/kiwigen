@@ -1,6 +1,6 @@
 {
-  "appId": "com.dodo.recorder",
-  "productName": "Dodo Recorder",
+  "appId": "com.kiwigen.app",
+  "productName": "KiwiGen",
   "publish": null,
   "directories": {
     "output": "release"
@@ -16,7 +16,7 @@
     ],
     "icon": "build/icon.icns",
     "extendInfo": {
-      "NSMicrophoneUsageDescription": "Dodo Recorder needs microphone access to record voice commentary during browser recording sessions."
+      "NSMicrophoneUsageDescription": "KiwiGen needs microphone access to record voice commentary during browser recording sessions."
     },
     "hardenedRuntime": false,
     "gatekeeperAssess": false,

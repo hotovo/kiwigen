@@ -1,5 +1,5 @@
 # Project Overview
-Dodo Recorder is an Electron + React desktop app that records browser interactions and optional
+KiwiGen is an Electron + React desktop app that records browser interactions and optional
 voice commentary, then exports AI-ready session bundles (`INSTRUCTIONS.md`, `actions.json`,
 `screenshots/`) for automated test generation across frameworks such as Playwright and Cypress.
 It focuses on local-first processing (Whisper.cpp + ffmpeg) and ships with platform build flows
@@ -64,7 +64,7 @@ npx tsc -p tsconfig.node.json
 
 ```bash
 # Debug production logs (macOS)
-tail -f ~/Library/Logs/dodo-recorder/main.log
+tail -f ~/Library/Logs/kiwigen/main.log
 ```
 
 ```bash

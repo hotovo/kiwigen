@@ -63,7 +63,7 @@ export class SessionWriter {
       const actionsJsonV2: ActionsJsonV2 = {
         _meta: {
           formatVersion: '2.0',
-          generatedBy: 'Dodo Recorder',
+          generatedBy: 'KiwiGen',
           sessionId: safeId,
           startTime: session.startTime,
           startTimeISO: new Date(session.startTime).toISOString(),

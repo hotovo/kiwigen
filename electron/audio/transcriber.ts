@@ -91,7 +91,7 @@ export class Transcriber {
     }
 
     try {
-      const tempDir = path.join(app.getPath('temp'), 'dodo-recorder')
+      const tempDir = path.join(app.getPath('temp'), 'kiwigen')
       await ensureDir(tempDir)
       
       const inputPath = getTempPath(tempDir, 'audio-input', '.webm')

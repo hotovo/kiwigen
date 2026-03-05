@@ -1,4 +1,4 @@
-name: Build and Publish Dodo Recorder Release
+name: Build and Publish KiwiGen Release
 
 on:
   release:
@@ -114,7 +114,7 @@ jobs:
       - name: Upload app artifacts (macOS)
         uses: actions/upload-artifact@v4
         with:
-          name: dodo-recorder-macos-arm64
+          name: kiwigen-macos-arm64
           path: |
             release/*.dmg
             release/*.zip
@@ -123,7 +123,7 @@ jobs:
       - name: Upload runtime assets (macOS)
         uses: actions/upload-artifact@v4
         with:
-          name: dodo-runtime-assets-darwin-arm64
+          name: kiwigen-runtime-assets-darwin-arm64
           path: release/runtime-assets/darwin-arm64/*
           retention-days: 30
 
@@ -177,14 +177,14 @@ jobs:
       - name: Upload app artifacts (Windows)
         uses: actions/upload-artifact@v4
         with:
-          name: dodo-recorder-windows
+          name: kiwigen-windows
           path: release/*.exe
           retention-days: 30
 
       - name: Upload runtime assets (Windows)
         uses: actions/upload-artifact@v4
         with:
-          name: dodo-runtime-assets-win32-x64
+          name: kiwigen-runtime-assets-win32-x64
           path: release/runtime-assets/win32-x64/*
           retention-days: 30
 
@@ -201,13 +201,13 @@ jobs:
       - name: Download runtime assets (macOS)
         uses: actions/download-artifact@v4
         with:
-          name: dodo-runtime-assets-darwin-arm64
+          name: kiwigen-runtime-assets-darwin-arm64
           path: artifacts/runtime-assets/darwin-arm64
 
       - name: Download runtime assets (Windows)
         uses: actions/download-artifact@v4
         with:
-          name: dodo-runtime-assets-win32-x64
+          name: kiwigen-runtime-assets-win32-x64
           path: artifacts/runtime-assets/win32-x64
 
       - name: Generate runtime manifest
@@ -224,7 +224,7 @@ jobs:
       - name: Upload runtime manifest artifact
         uses: actions/upload-artifact@v4
         with:
-          name: dodo-runtime-manifest
+          name: kiwigen-runtime-manifest
           path: artifacts/runtime-assets/runtime-manifest.json
           retention-days: 30
 
@@ -259,14 +259,14 @@ jobs:
           shopt -s nullglob
 
           files=(
-            artifacts/dodo-recorder-macos-arm64/*
-            artifacts/dodo-recorder-windows/*
-            artifacts/dodo-runtime-assets-darwin-arm64/dodo-runtime-whisper-model-small.en.bin
-            artifacts/dodo-runtime-assets-darwin-arm64/dodo-runtime-whisper-binary-darwin-arm64
-            artifacts/dodo-runtime-assets-win32-x64/dodo-runtime-whisper-binary-win32-x64.zip
-            artifacts/dodo-runtime-assets-darwin-arm64/dodo-runtime-playwright-darwin-arm64-chromium-*.zip
-            artifacts/dodo-runtime-assets-win32-x64/dodo-runtime-playwright-win32-x64-chromium-*.zip
-            artifacts/dodo-runtime-manifest/runtime-manifest.json
+            artifacts/kiwigen-macos-arm64/*
+            artifacts/kiwigen-windows/*
+            artifacts/kiwigen-runtime-assets-darwin-arm64/kiwigen-runtime-whisper-model-small.en.bin
+            artifacts/kiwigen-runtime-assets-darwin-arm64/kiwigen-runtime-whisper-binary-darwin-arm64
+            artifacts/kiwigen-runtime-assets-win32-x64/kiwigen-runtime-whisper-binary-win32-x64.zip
+            artifacts/kiwigen-runtime-assets-darwin-arm64/kiwigen-runtime-playwright-darwin-arm64-chromium-*.zip
+            artifacts/kiwigen-runtime-assets-win32-x64/kiwigen-runtime-playwright-win32-x64-chromium-*.zip
+            artifacts/kiwigen-runtime-manifest/runtime-manifest.json
           )
 
           if [ "${#files[@]}" -eq 0 ]; then
@@ -284,7 +284,7 @@ jobs:
           for attempt in 1 2 3 4 5 6; do
             echo "URL verification attempt ${attempt}/6"
             if node ./build/verify-runtime-manifest.js \
-              --manifest artifacts/dodo-runtime-manifest/runtime-manifest.json \
+              --manifest artifacts/kiwigen-runtime-manifest/runtime-manifest.json \
               --check-urls true; then
               exit 0
             fi

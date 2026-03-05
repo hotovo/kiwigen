@@ -7,7 +7,7 @@ import { EventEmitter } from 'events'
 import { randomUUID } from 'crypto'
 import { logger } from '../utils/logger'
 import type { RecordedAction } from '../../shared/types'
-import type { DodoWindow } from '../../shared/browser-context'
+import type { KiwiWindow } from '../../shared/browser-context'
 import { getInjectionScript } from './injected-script'
 import { getWidgetScript, getWidgetInitScript } from './recording-widget'
 import { getHighlighterScript, getHighlighterInitScript } from './hover-highlighter'
@@ -153,7 +153,7 @@ export class BrowserRecorder extends EventEmitter {
     if (!this.page) return
 
     // Expose recording function to browser context
-    await this.page.exposeFunction('__dodoRecordAction', (data: string) => {
+    await this.page.exposeFunction('__kiwiRecordAction', (data: string) => {
       try {
         const parsed = JSON.parse(data)
         this.recordAction(parsed)
@@ -163,7 +163,7 @@ export class BrowserRecorder extends EventEmitter {
     })
 
     // Expose screenshot function to browser context
-    await this.page.exposeFunction('__dodoTakeScreenshot', async () => {
+    await this.page.exposeFunction('__kiwiTakeScreenshot', async () => {
       try {
         return await this.captureScreenshot()
       } catch (error) {
@@ -173,9 +173,9 @@ export class BrowserRecorder extends EventEmitter {
     })
 
     // Expose pause/resume functions to browser context with session token validation
-    await this.page.exposeFunction('__dodoPauseRecording', async (token: string) => {
+    await this.page.exposeFunction('__kiwiPauseRecording', async (token: string) => {
       if (token !== this.sessionToken) {
-        logger.warn('🔒 Rejected __dodoPauseRecording: invalid session token')
+        logger.warn('🔒 Rejected __kiwiPauseRecording: invalid session token')
         return
       }
       try {
@@ -186,9 +186,9 @@ export class BrowserRecorder extends EventEmitter {
       }
     })
 
-    await this.page.exposeFunction('__dodoResumeRecording', async (token: string) => {
+    await this.page.exposeFunction('__kiwiResumeRecording', async (token: string) => {
       if (token !== this.sessionToken) {
-        logger.warn('🔒 Rejected __dodoResumeRecording: invalid session token')
+        logger.warn('🔒 Rejected __kiwiResumeRecording: invalid session token')
         return
       }
       try {
@@ -204,20 +204,20 @@ export class BrowserRecorder extends EventEmitter {
     
     // Inject the widget creation function
     // Note: Using string concatenation to avoid nested template literal issues
-    await this.page.addInitScript('window.__dodoCreateWidget = ' + getWidgetScript().toString())
+    await this.page.addInitScript('window.__kiwiCreateWidget = ' + getWidgetScript().toString())
     
     // Inject the widget initialization script
     await this.page.addInitScript(getWidgetInitScript())
     
     // Inject the hover highlighter creation function
-    await this.page.addInitScript('window.__dodoCreateHighlighter = ' + getHighlighterScript().toString())
+    await this.page.addInitScript('window.__kiwiCreateHighlighter = ' + getHighlighterScript().toString())
     
     // Inject the highlighter initialization script (same pattern as widget)
     await this.page.addInitScript(getHighlighterInitScript())
 
     // Inject session token so the widget can pass it back in pause/resume calls
     await this.page.addInitScript(
-      (token: string) => { (window as unknown as { __dodoSessionToken?: string }).__dodoSessionToken = token },
+      (token: string) => { (window as unknown as { __kiwiSessionToken?: string }).__kiwiSessionToken = token },
       this.sessionToken
     )
 
@@ -309,10 +309,10 @@ export class BrowserRecorder extends EventEmitter {
 
     try {
       await this.page.evaluate(({ isPaused, audioActive }: { isPaused: boolean; audioActive: boolean }) => {
-        const win = window as { __dodoRecordingPaused?: boolean; __dodoShowEqualizer?: () => void }
-        win.__dodoRecordingPaused = isPaused
+        const win = window as { __kiwiRecordingPaused?: boolean; __kiwiShowEqualizer?: () => void }
+        win.__kiwiRecordingPaused = isPaused
 
-        const widgetHost = document.querySelector('#__dodo-recorder-widget-host')
+        const widgetHost = document.querySelector('#__kiwi-widget-host')
         const widget = widgetHost?.shadowRoot?.querySelector('.dodo-widget')
         const voiceIndicator = widgetHost?.shadowRoot?.querySelector('#voice-indicator')
         const pauseResumeBtn = widgetHost?.shadowRoot?.querySelector('#pause-resume-btn')
@@ -355,8 +355,8 @@ export class BrowserRecorder extends EventEmitter {
         if (assertionBtn) assertionBtn.disabled = isPaused
 
         // Trigger equalizer animation when resuming with active audio
-        if (!isPaused && audioActive && typeof win.__dodoShowEqualizer === 'function') {
-          win.__dodoShowEqualizer()
+        if (!isPaused && audioActive && typeof win.__kiwiShowEqualizer === 'function') {
+          win.__kiwiShowEqualizer()
         }
       }, { isPaused, audioActive: this.audioActive })
     } catch (error) {
@@ -375,15 +375,15 @@ export class BrowserRecorder extends EventEmitter {
 
     try {
       await this.page.evaluate((isActive) => {
-        const win = window as unknown as DodoWindow
-        win.__dodoAudioActive = isActive
+        const win = window as unknown as KiwiWindow
+        win.__kiwiAudioActive = isActive
 
         // Update voice indicator visibility (only show if active AND not paused)
-        const voiceIndicator = document.querySelector('#__dodo-recorder-widget-host')
+        const voiceIndicator = document.querySelector('#__kiwi-widget-host')
           ?.shadowRoot?.querySelector('#voice-indicator')
         
         if (voiceIndicator) {
-          const isPaused = win.__dodoRecordingPaused === true
+          const isPaused = win.__kiwiRecordingPaused === true
           if (isActive && !isPaused) {
             voiceIndicator.classList.add('active')
           } else {
@@ -391,12 +391,12 @@ export class BrowserRecorder extends EventEmitter {
           }
         }
 
-        if (isActive && typeof win.__dodoShowEqualizer === 'function') {
-          win.__dodoShowEqualizer()
+        if (isActive && typeof win.__kiwiShowEqualizer === 'function') {
+          win.__kiwiShowEqualizer()
         }
 
-        if (!isActive && typeof win.__dodoHideEqualizer === 'function') {
-          win.__dodoHideEqualizer()
+        if (!isActive && typeof win.__kiwiHideEqualizer === 'function') {
+          win.__kiwiHideEqualizer()
         }
       }, active)
     } catch (error) {

@@ -18,7 +18,7 @@ export interface RuntimeManifest {
 }
 
 const RELEASE_TAG = 'v0.4.0'
-const RELEASE_BASE = `https://github.com/dodosaurus/dodo-recorder/releases/download/${RELEASE_TAG}`
+const RELEASE_BASE = `https://github.com/hotovo/kiwigen/releases/download/${RELEASE_TAG}`
 
 export const runtimeManifest: RuntimeManifest = {
   manifestVersion: 1,
@@ -28,7 +28,7 @@ export const runtimeManifest: RuntimeManifest = {
         {
           id: 'whisper-model',
           version: 'small.en-0.4.0',
-          url: `${RELEASE_BASE}/dodo-runtime-whisper-model-small.en.bin`,
+          url: `${RELEASE_BASE}/kiwigen-runtime-whisper-model-small.en.bin`,
           sha256: 'c6138d6d58ecc8322097e0f987c32f1be8bb0a18532a3f88f734d1bbf9c41e5d',
           type: 'file',
           targetPath: 'models/ggml-small.en.bin',
@@ -36,7 +36,7 @@ export const runtimeManifest: RuntimeManifest = {
         {
           id: 'whisper-binary',
           version: 'whispercpp-0.4.0',
-          url: `${RELEASE_BASE}/dodo-runtime-whisper-binary-darwin-arm64`,
+          url: `${RELEASE_BASE}/kiwigen-runtime-whisper-binary-darwin-arm64`,
           sha256: '3cc8df8150d57f0f2e82d7ef929985ded2dd71e2fcc7bff704d70ee157ccb3b6',
           type: 'file',
           targetPath: 'models/unix/whisper',
@@ -45,7 +45,7 @@ export const runtimeManifest: RuntimeManifest = {
         {
           id: 'playwright-chromium',
           version: 'chromium-1208',
-          url: `${RELEASE_BASE}/dodo-runtime-playwright-darwin-arm64-chromium-1208.zip`,
+          url: `${RELEASE_BASE}/kiwigen-runtime-playwright-darwin-arm64-chromium-1208.zip`,
           sha256: '2c179f2e76e998c6b57a61696ea99470052b84f6ec9f4098f0ed315f9f96fda4',
           type: 'zip',
           targetPath: 'playwright-browsers',
@@ -57,7 +57,7 @@ export const runtimeManifest: RuntimeManifest = {
         {
           id: 'whisper-model',
           version: 'small.en-0.4.0',
-          url: `${RELEASE_BASE}/dodo-runtime-whisper-model-small.en.bin`,
+          url: `${RELEASE_BASE}/kiwigen-runtime-whisper-model-small.en.bin`,
           sha256: 'c6138d6d58ecc8322097e0f987c32f1be8bb0a18532a3f88f734d1bbf9c41e5d',
           type: 'file',
           targetPath: 'models/ggml-small.en.bin',
@@ -65,7 +65,7 @@ export const runtimeManifest: RuntimeManifest = {
         {
           id: 'whisper-binary',
           version: 'whispercpp-0.4.0',
-          url: `${RELEASE_BASE}/dodo-runtime-whisper-binary-win32-x64.zip`,
+          url: `${RELEASE_BASE}/kiwigen-runtime-whisper-binary-win32-x64.zip`,
           sha256: 'PLACEHOLDER_UPDATE_AFTER_PACKAGING',
           type: 'zip',
           targetPath: 'models/win',
@@ -73,7 +73,7 @@ export const runtimeManifest: RuntimeManifest = {
         {
           id: 'playwright-chromium',
           version: 'chromium-1200',
-          url: `${RELEASE_BASE}/dodo-runtime-playwright-win32-x64-chromium-1200.zip`,
+          url: `${RELEASE_BASE}/kiwigen-runtime-playwright-win32-x64-chromium-1200.zip`,
           sha256: 'de952108e8f709a68317cf8b1081a2df1e1b5d6af6ef45e458540a9f6c9c2891',
           type: 'zip',
           targetPath: 'playwright-browsers',
