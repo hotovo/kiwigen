@@ -9,6 +9,9 @@ const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
+// Detect platform early (used throughout the script)
+const platform = process.platform;
+
 // Load .env file if it exists (for signing credentials)
 const envPath = path.join(process.cwd(), '.env');
 if (fs.existsSync(envPath)) {
@@ -56,8 +59,6 @@ if (platform === 'win32') {
 
 // Determine platform-specific electron-builder arguments
 let builderArgs = '--config electron-builder.json --publish never';
-
-const platform = process.platform;
 
 console.log(`🔨 Building for platform: ${platform}`);
 
