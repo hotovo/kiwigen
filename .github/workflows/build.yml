@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: 'Release tag to build and publish (e.g., v0.4.2)'
+        description: 'Release tag to build and publish (e.g., v0.5.0)'
         required: true
         type: string
 
@@ -74,6 +74,16 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Download Whisper model
+        shell: bash
+        run: |
+          mkdir -p models
+          curl -L -o models/ggml-small.en.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.en.bin
+          echo "Downloaded Whisper model: $(ls -lh models/ggml-small.en.bin)"
+
+      - name: Install Playwright browsers
+        run: npm run install:browsers
+
       - name: Import code signing certificate
         shell: bash
         run: |
@@ -90,7 +100,7 @@ jobs:
           echo "Verifying imported identities:"
           security find-identity -v -p codesigning build.keychain
 
-      - name: Build macOS app
+      - name: Build macOS app (signed & notarized)
         run: npm run build:prod
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
@@ -99,32 +109,13 @@ jobs:
           CSC_LINK: ~/variables/certificate.p12
           CSC_KEY_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
 
-      - name: Package runtime assets (macOS)
-        shell: bash
-        run: |
-          npm run install:browsers
-          mkdir -p models
-          curl -L -o models/ggml-small.en.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.en.bin
-          node ./build/package-runtime-assets.js \
-            --platform darwin-arm64 \
-            --release-tag "${{ needs.prepare.outputs.release_tag }}" \
-            --repo "${{ github.repository }}" \
-            --output release/runtime-assets/darwin-arm64
-
-      - name: Upload app artifacts (macOS)
+      - name: Upload macOS artifacts
         uses: actions/upload-artifact@v4
         with:
           name: kiwigen-macos-arm64
           path: |
             release/*.dmg
             release/*.zip
-          retention-days: 30
-
-      - name: Upload runtime assets (macOS)
-        uses: actions/upload-artifact@v4
-        with:
-          name: kiwigen-runtime-assets-darwin-arm64
-          path: release/runtime-assets/darwin-arm64/*
           retention-days: 30
 
   build-windows:
@@ -158,91 +149,32 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Download Whisper model
+        shell: bash
+        run: |
+          mkdir -p models
+          curl -L -o models/ggml-small.en.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.en.bin
+          ls -lh models/ggml-small.en.bin
+
+      - name: Install Playwright browsers
+        run: npm run install:browsers
+
       - name: Build Windows app (unsigned)
         shell: bash
         run: npm run build:prod
 
-      - name: Package runtime assets (Windows)
-        shell: bash
-        run: |
-          npm run install:browsers
-          mkdir -p models
-          curl -L -o models/ggml-small.en.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.en.bin
-          node ./build/package-runtime-assets.js \
-            --platform win32-x64 \
-            --release-tag "${{ needs.prepare.outputs.release_tag }}" \
-            --repo "${{ github.repository }}" \
-            --output release/runtime-assets/win32-x64
-
-      - name: Upload app artifacts (Windows)
+      - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
         with:
           name: kiwigen-windows
           path: release/*.exe
           retention-days: 30
 
-      - name: Upload runtime assets (Windows)
-        uses: actions/upload-artifact@v4
-        with:
-          name: kiwigen-runtime-assets-win32-x64
-          path: release/runtime-assets/win32-x64/*
-          retention-days: 30
-
-  generate-runtime-manifest:
+  upload-to-release:
     needs: [prepare, build-macos-arm64, build-windows]
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code at release tag
-        uses: actions/checkout@v4
-        with:
-          ref: refs/tags/${{ needs.prepare.outputs.release_tag }}
-
-      - name: Download runtime assets (macOS)
-        uses: actions/download-artifact@v4
-        with:
-          name: kiwigen-runtime-assets-darwin-arm64
-          path: artifacts/runtime-assets/darwin-arm64
-
-      - name: Download runtime assets (Windows)
-        uses: actions/download-artifact@v4
-        with:
-          name: kiwigen-runtime-assets-win32-x64
-          path: artifacts/runtime-assets/win32-x64
-
-      - name: Generate runtime manifest
-        run: |
-          node ./build/generate-runtime-manifest.js \
-            --metadata-dir artifacts/runtime-assets \
-            --output artifacts/runtime-assets/runtime-manifest.json
-
-      - name: Verify runtime manifest structure
-        run: |
-          node ./build/verify-runtime-manifest.js \
-            --manifest artifacts/runtime-assets/runtime-manifest.json
-
-      - name: Upload runtime manifest artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: kiwigen-runtime-manifest
-          path: artifacts/runtime-assets/runtime-manifest.json
-          retention-days: 30
-
-  upload-to-release:
-    needs: [prepare, build-macos-arm64, build-windows, generate-runtime-manifest]
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code at release tag
-        uses: actions/checkout@v4
-        with:
-          ref: refs/tags/${{ needs.prepare.outputs.release_tag }}
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
@@ -251,7 +183,7 @@ jobs:
       - name: Display downloaded artifact structure
         run: ls -R artifacts
 
-      - name: Upload installers and runtime assets to GitHub Release
+      - name: Upload installers to GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
@@ -261,12 +193,6 @@ jobs:
           files=(
             artifacts/kiwigen-macos-arm64/*
             artifacts/kiwigen-windows/*
-            artifacts/kiwigen-runtime-assets-darwin-arm64/kiwigen-runtime-whisper-model-small.en.bin
-            artifacts/kiwigen-runtime-assets-darwin-arm64/kiwigen-runtime-whisper-binary-darwin-arm64
-            artifacts/kiwigen-runtime-assets-win32-x64/kiwigen-runtime-whisper-binary-win32-x64.zip
-            artifacts/kiwigen-runtime-assets-darwin-arm64/kiwigen-runtime-playwright-darwin-arm64-chromium-*.zip
-            artifacts/kiwigen-runtime-assets-win32-x64/kiwigen-runtime-playwright-win32-x64-chromium-*.zip
-            artifacts/kiwigen-runtime-manifest/runtime-manifest.json
           )
 
           if [ "${#files[@]}" -eq 0 ]; then
@@ -277,22 +203,3 @@ jobs:
           gh release upload "${{ needs.prepare.outputs.release_tag }}" "${files[@]}" \
             --repo "${{ github.repository }}" \
             --clobber
-
-      - name: Verify uploaded runtime URLs
-        shell: bash
-        run: |
-          for attempt in 1 2 3 4 5 6; do
-            echo "URL verification attempt ${attempt}/6"
-            if node ./build/verify-runtime-manifest.js \
-              --manifest artifacts/kiwigen-runtime-manifest/runtime-manifest.json \
-              --check-urls true; then
-              exit 0
-            fi
-
-            if [ "$attempt" -eq 6 ]; then
-              echo "Runtime URL verification failed after all retries"
-              exit 1
-            fi
-
-            sleep 10
-          done

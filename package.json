@@ -7,13 +7,8 @@
     "dev": "vite",
     "build": "node ./build/build.js", 
     "build:prod": "node ./build/build-prod.js",
-    "postinstall": "node -e \"console.log('Skipping bundled Playwright browser install (runtime setup handles dependencies).')\"",
+    "postinstall": "node ./build/install-playwright-browsers.js",
     "install:browsers": "node ./build/install-playwright-browsers.js",
-    "runtime:package:mac": "node ./build/package-runtime-assets.js --platform darwin-arm64",
-    "runtime:package:win": "node ./build/package-runtime-assets.js --platform win32-x64",
-    "runtime:prepare:mac": "npm run install:browsers && npm run runtime:package:mac -- --release-tag v$npm_package_version --output release/runtime-assets/darwin-arm64",
-    "runtime:manifest": "node ./build/generate-runtime-manifest.js",
-    "runtime:manifest:verify": "node ./build/verify-runtime-manifest.js",
     "generate-icons": "./build/generate-icons.sh"
   },
   "keywords": [

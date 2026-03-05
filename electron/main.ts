@@ -6,7 +6,6 @@ import { logger } from './utils/logger'
 import { getSettingsStore } from './settings/store'
 import { updateTimeWindows } from './utils/voiceDistribution'
 import { registerAllHandlers } from './ipc/handlers'
-import { runtimeDependencyManager } from './runtime/dependency-manager'
 
 process.on('uncaughtException', (error) => {
   console.error('Uncaught exception:', error)
@@ -137,21 +136,12 @@ async function initializeApp(): Promise<void> {
     
     const buildInfo = getBuildInfo()
     if (buildInfo) {
-      logger.info(`📦 Build: ${buildInfo.commitHash}${buildInfo.isDirty ? ' (dirty)' : ''}`)
+    logger.info(`📦 Build: ${buildInfo.commitHash}${buildInfo.isDirty ? ' (dirty)' : ''}`)
       logger.info(`   Branch: ${buildInfo.branch}`)
       logger.info(`   Built: ${buildInfo.buildTime}`)
     } else {
       logger.info('📦 Build: unknown')
     }
-    
-    logger.info('Initializing runtime dependency manager...')
-    await runtimeDependencyManager.initialize()
-    logger.info('Runtime dependency manager initialized')
-    
-    logger.info('Loading settings...')
-    const settings = getSettingsStore()
-    
-    updateTimeWindows(settings.getVoiceDistributionConfig())
     
     logger.info('Cleaning up old temp files...')
     const tempDir = path.join(app.getPath('temp'), 'kiwigen')

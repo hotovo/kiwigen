@@ -9,6 +9,33 @@ import type { TranscriptSegment } from '../../shared/types'
 const ffmpeg = require('fluent-ffmpeg')
 
 /**
+ * Get Whisper binary path based on platform
+ * - Windows: models/win/whisper-cli.exe
+ * - macOS: models/unix/whisper
+ */
+function getWhisperBinaryPath(): string {
+  const appPath = app.isPackaged ? process.resourcesPath : app.getAppPath()
+  const modelsDir = path.join(appPath, 'models')
+  
+  if (process.platform === 'win32') {
+    // Windows: use whisper-cli.exe
+    return path.join(modelsDir, 'win', 'whisper-cli.exe')
+  } else {
+    // macOS: use whisper binary
+    return path.join(modelsDir, 'unix', 'whisper')
+  }
+}
+
+/**
+ * Get Whisper model path
+ * Returns path to ggml-small.en.bin in bundled models directory
+ */
+function getModelPath(): string {
+  const appPath = app.isPackaged ? process.resourcesPath : app.getAppPath()
+  return path.join(appPath, 'models', 'ggml-small.en.bin')
+}
+
+/**
  * Get ffmpeg binary path, handling both development and production environments
  */
 function getFfmpegPath(): string {
@@ -39,13 +66,23 @@ interface WhisperResult {
 export class Transcriber {
   private isInitialized = false
   private transcriptionTimeoutMs: number
-  private modelPath: string
-  private whisperBinaryPath: string
 
-  constructor(modelPath: string, whisperBinaryPath: string, transcriptionTimeoutMs: number = 300000) {
-    this.modelPath = modelPath
-    this.whisperBinaryPath = whisperBinaryPath
+  constructor(transcriptionTimeoutMs: number = 300000) {
     this.transcriptionTimeoutMs = transcriptionTimeoutMs
+  }
+
+  /**
+   * Get bundled Whisper model path
+   */
+  private getModelPath(): string {
+    return getModelPath()
+  }
+
+  /**
+   * Get bundled Whisper binary path
+   */
+  private getWhisperBinaryPath(): string {
+    return getWhisperBinaryPath()
   }
 
   /**
@@ -54,24 +91,27 @@ export class Transcriber {
    * @returns Promise that resolves when initialization is complete
    */
   async initialize(): Promise<void> {
+    const modelPath = this.getModelPath()
+    const whisperBinaryPath = this.getWhisperBinaryPath()
+    
     logger.info('='.repeat(60))
     logger.info('🎤 Whisper Transcriber Initialization')
     logger.info('='.repeat(60))
-    logger.info('Model: small.en')
-    logger.info(`Path: ${this.modelPath}`)
-    logger.info(`Binary: ${this.whisperBinaryPath}`)
+    logger.info('Model: small.en (bundled)')
+    logger.info(`Path: ${modelPath}`)
+    logger.info(`Binary: ${whisperBinaryPath}`)
     
-    if (!fs.existsSync(this.modelPath)) {
+    if (!fs.existsSync(modelPath)) {
       logger.error('❌ Whisper model not found!')
-      throw new Error(`Whisper model not found at ${this.modelPath}`)
+      throw new Error(`Whisper model not found at ${modelPath}`)
     }
 
-    if (!fs.existsSync(this.whisperBinaryPath)) {
+    if (!fs.existsSync(whisperBinaryPath)) {
       logger.error('❌ Whisper binary not found!')
-      throw new Error(`Whisper binary not found at ${this.whisperBinaryPath}`)
+      throw new Error(`Whisper binary not found at ${whisperBinaryPath}`)
     }
 
-    const stats = fs.statSync(this.modelPath)
+    const stats = fs.statSync(modelPath)
     const sizeMB = (stats.size / (1024 * 1024)).toFixed(2)
     logger.info(`✅ Model ready (${sizeMB} MB)`)
     
@@ -183,9 +223,9 @@ export class Transcriber {
       logger.info(`Audio file: ${audioPath}`)
       logger.info('Model: small.en')
       
-      const whisperPath = this.whisperBinaryPath
+      const whisperPath = this.getWhisperBinaryPath()
       
-      const modelPath = this.modelPath
+      const modelPath = this.getModelPath()
       const jsonOutputPath = `${audioPath}.json`
       
       // Prompt text to prime Whisper - also used for filtering hallucinations

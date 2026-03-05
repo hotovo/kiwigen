@@ -97,38 +97,34 @@ npm install
 npm run dev
 ```
 
-Runtime dependencies (Whisper + Chromium) are now installed by the app on first launch.
+### Development Dependencies
 
-### First-Launch Runtime Download
+For development, you'll need to install Playwright browsers and download the Whisper model:
 
-On first startup, the app installs required runtime dependencies from GitHub Release assets for the current app version:
+```bash
+# Install Playwright browsers (done automatically via postinstall)
+npm run install:browsers
 
-- **Whisper model** (`ggml-small.en.bin`, ~466 MB)
-- **Whisper binary** (platform-specific executable)
-- **Playwright Chromium runtime** (platform-specific browser archive)
-
-**Why this is done on first launch (instead of bundling):**
-- Smaller app installers and faster downloads
-- Runtime assets can be updated per release without inflating packaged binaries
-- Deterministic setup with checksum verification before use
-
-The dependencies are installed once per user profile and reused between launches until a newer runtime version is required.
+# Download Whisper model for local development
+mkdir -p models
+curl -L -o models/ggml-small.en.bin \
+  https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.en.bin
+```
 
 ### Project Structure
 
 ```
 kiwigen/
-├── models/                          # Whisper components (source for release packaging)
+├── models/                          # Whisper components (bundled in installer)
 │   ├── unix/                       # Unix binary (macOS)
 │   │   └── whisper                # Whisper.cpp binary (committed)
 │   ├── win/                        # Windows binaries
 │   │   └── whisper-cli.exe         # Whisper.cpp binary (committed)
-│   └── ggml-small.en.bin          # AI model (download manually for development)
+│   └── ggml-small.en.bin          # AI model (download for development)
 ├── electron/                        # Electron main process
 │   ├── main.ts                     # Entry point
 │   ├── browser/                    # Playwright recording
 │   ├── audio/                      # Audio & transcription
-│   ├── runtime/                     # Runtime dependency management
 │   ├── session/                    # Session management
 │   ├── ipc/                        # IPC handlers
 │   ├── settings/                    # Settings persistence
@@ -156,11 +152,6 @@ Found a bug or have a feature request? Please open an issue on [GitHub Issues](h
 For comprehensive troubleshooting guides, see [`docs/USER_GUIDE.md`](docs/USER_GUIDE.md#troubleshooting).
 
 ### Common Issues
-
-**"Runtime dependency install failed" Error:**
-- Re-run setup from the first-launch setup screen
-- Check network access to GitHub release assets
-- Review app logs in `main.log` for download/checksum details
 
 ### Debugging
 

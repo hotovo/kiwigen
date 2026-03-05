@@ -3,8 +3,6 @@ import type {
   SessionBundle,
   TranscriptSegment,
   IpcResult,
-  RuntimeDependencyStatus,
-  RuntimeInstallProgress,
 } from '../../shared/types'
 
 export interface UserPreferences {
@@ -49,10 +47,6 @@ export interface ElectronAPI {
   openLogFile: () => Promise<IpcResult>
   openLogFolder: () => Promise<IpcResult>
   getBuildInfo: () => Promise<BuildInfo | null>
-  getRuntimeDependencyStatus: () => Promise<IpcResult<{ status: RuntimeDependencyStatus }>>
-  installRuntimeDependencies: () => Promise<IpcResult<{ status: RuntimeDependencyStatus }>>
-  cancelRuntimeDependencyInstall: () => Promise<IpcResult>
-  onRuntimeDependencyProgress: (callback: (progress: RuntimeInstallProgress) => void) => () => void
   minimizeWindow?: () => void
   maximizeWindow?: () => void
   closeWindow?: () => void
