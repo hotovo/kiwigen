@@ -45,6 +45,15 @@ execSync('node ./build/generate-build-info.js .', { stdio: 'inherit' });
 console.log('🏗️  Building frontend...');
 execSync('npx vite build', { stdio: 'inherit' });
 
+// Copy Windows icon to dist-electron for runtime use
+if (platform === 'win32') {
+  console.log('🎨 Copying Windows icon to dist-electron...');
+  const iconSource = path.join(process.cwd(), 'build', 'icon.ico');
+  const iconDest = path.join(process.cwd(), 'dist-electron', 'icon.ico');
+  fs.copyFileSync(iconSource, iconDest);
+  console.log('   ✅ Icon copied to dist-electron/icon.ico');
+}
+
 // Determine platform-specific electron-builder arguments
 let builderArgs = '--config electron-builder.json --publish never';
 

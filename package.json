@@ -1,6 +1,6 @@
 {
   "name": "kiwigen",
-  "version": "0.4.3",
+  "version": "0.5.0",
   "description": "Record browser interactions and voice commentary for AI-assisted automated test generation",
   "main": "dist-electron/main.js",
   "scripts": {

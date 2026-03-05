@@ -82,6 +82,7 @@ async function createWindow() {
     minHeight: 600,
     backgroundColor: '#0a0a0b',
     show: false,
+    icon: isWindows ? path.join(__dirname, 'icon.ico') : undefined,
     titleBarStyle: isMac ? 'hiddenInset' : undefined,
     titleBarOverlay: !isMac ? false : undefined,
     frame: isMac,
