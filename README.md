@@ -172,17 +172,11 @@ For comprehensive troubleshooting guides, see [`docs/USER_GUIDE.md`](docs/USER_G
 
 ## ❓ FAQ
 
-**Q: What exactly is downloaded on first startup?**
-A: Three runtime artifacts: Whisper model (`ggml-small.en.bin`), platform-specific Whisper binary, and platform-specific Playwright Chromium archive.
-
-**Q: Why are these dependencies downloaded after install instead of bundled?**
-A: To keep installers smaller, speed up distribution, and let runtime assets be versioned and updated per release while still being verified with SHA256 checksums.
+**Q: Why is the installer so large?**
+A: The installer bundles all necessary dependencies in a single file for security and reliability. This includes the complete Electron runtime, Chromium browser for recording, Whisper AI model for voice transcription, and all required libraries. No additional downloads are needed - everything works offline immediately after installation.
 
 **Q: Can I use a different Whisper model?**
 A: The app is hard-coded to use `small.en` for consistency and performance.
-
-**Q: Do I need to download runtime dependencies on every app launch?**
-A: No. They install once per machine/user profile and are reused between launches until the runtime version changes.
 
 **Q: Does this work with frameworks other than Playwright?**
 A: Yes! The session output is framework-agnostic. AI agents can generate tests for Playwright, Cypress, Selenium, Puppeteer, or any other framework.
@@ -200,6 +194,12 @@ A: No. All transcription happens locally using Whisper.cpp. Your voice recording
 
 ---
 
+## 🏢 About
+
+KiwiGen is developed and maintained by [Hotovo](https://github.com/hotovo).
+
+---
+
 ## 📄 License
 
-MIT License - see [LICENSE](LICENSE) for details.
+MIT License - Copyright (c) 2026 Hotovo. See [LICENSE](LICENSE) for details.
