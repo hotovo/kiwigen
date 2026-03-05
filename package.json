@@ -5,11 +5,12 @@
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "vite",
-    "build": "node ./build/build.js", 
+    "build": "node ./build/build.js",
     "build:prod": "node ./build/build-prod.js",
     "postinstall": "node ./build/install-playwright-browsers.js",
     "install:browsers": "node ./build/install-playwright-browsers.js",
-    "generate-icons": "./build/generate-icons.sh"
+    "generate-icons": "./build/generate-icons.sh",
+    "test": "node tests/unit/urlValidation.test.js"
   },
   "keywords": [
     "playwright",

@@ -142,12 +142,20 @@ export function RecordingControls() {
       console.log('🌐 Browser recording result:', result)
 
       if (!result.success) {
-        console.error('❌ Failed to start recording:', result.error)
+        const errorMessage = result.error || 'Failed to start recording'
+        console.error('❌ Failed to start recording:', errorMessage)
+        
+        // Show user-friendly error in console (could be enhanced with a toast/alert UI later)
+        alert(`Cannot start recording:\n\n${errorMessage}\n\nPlease check the URL format and try again.`)
+        
         // Stop audio if browser failed to start
         if (audioStarted) {
           console.log('🎤 Stopping audio due to browser recording failure')
           await stopAudio()
         }
+        
+        // Reset status back to idle
+        setStatus('idle')
         return
       }
 
@@ -160,11 +168,19 @@ export function RecordingControls() {
         console.log('✅ Audio activity set to true in browser')
       }
     } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred'
       console.error('❌ Exception during startRecording IPC call:', err)
+      
+      // Show user-friendly error
+      alert(`Cannot start recording:\n\n${errorMessage}\n\nPlease check your settings and try again.`)
+      
       if (audioStarted) {
         console.log('🎤 Stopping audio due to exception')
         await stopAudio()
       }
+      
+      // Reset status back to idle
+      setStatus('idle')
     }
   }
 

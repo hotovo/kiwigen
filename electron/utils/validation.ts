@@ -5,27 +5,22 @@ import { app } from 'electron'
 import type { AppSettings } from '../settings/store'
 import type { RecordedAction, TranscriptSegment, SessionBundle } from '../../shared/types'
 import {
-  ALLOWED_PROTOCOLS,
   SESSION_ID_REGEX,
   MAX_AUDIO_SIZE,
   MAX_URL_LENGTH,
   MAX_PATH_LENGTH,
   MAX_TIMEOUT_MS,
 } from '../../shared/constants'
+import { validateAndSanitizeUrl } from '../../shared/urlUtils'
 
-export function validateUrl(url: string): { valid: boolean; error?: string } {
-  if (!url || typeof url !== 'string') {
-    return { valid: false, error: 'URL is required' }
-  }
-
-  try {
-    const parsed = new URL(url)
-    if (!(ALLOWED_PROTOCOLS as readonly string[]).includes(parsed.protocol)) {
-      return { valid: false, error: `Protocol ${parsed.protocol} is not allowed. Use http: or https:` }
-    }
-    return { valid: true }
-  } catch {
-    return { valid: false, error: 'Invalid URL format' }
+export function validateUrl(url: string): { valid: boolean; sanitized?: string; error?: string } {
+  const result = validateAndSanitizeUrl(url)
+  
+  return {
+    valid: result.valid,
+    sanitized: result.sanitized,
+    // Use user-friendly error for display, fallback to technical error
+    error: result.userFriendlyError || result.error
   }
 }
 

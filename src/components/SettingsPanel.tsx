@@ -4,8 +4,18 @@ import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { MicrophoneSelector } from '@/components/MicrophoneSelector'
 import { useSettings } from '@/lib/useSettings'
-import { Folder, Mic } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { Folder, Mic, CheckCircle2, XCircle } from 'lucide-react'
 import { useShallow } from 'zustand/react/shallow'
+import { useState } from 'react'
+import { validateAndSanitizeUrl } from '../../shared/urlUtils'
+
+interface UrlValidationState {
+  validated: boolean
+  valid: boolean
+  error?: string
+  sanitized?: string
+}
 
 export function SettingsPanel() {
   const {
@@ -28,10 +38,35 @@ export function SettingsPanel() {
   // Use shared settings hook for centralized settings management
   const { updatePreferences, updateMicrophoneSettings } = useSettings()
 
+  // URL validation state
+  const [urlValidation, setUrlValidation] = useState<UrlValidationState>({
+    validated: false,
+    valid: false
+  })
+
   // Update startUrl with automatic persistence
   const handleStartUrlChange = async (url: string) => {
     setStartUrl(url)
     await updatePreferences({ startUrl: url })
+    // Reset validation state when user types
+    setUrlValidation({ validated: false, valid: false })
+  }
+
+  // Validate URL on blur
+  const handleUrlBlur = () => {
+    if (!startUrl.trim()) {
+      // Don't validate empty URLs
+      setUrlValidation({ validated: false, valid: false })
+      return
+    }
+
+    const result = validateAndSanitizeUrl(startUrl)
+    setUrlValidation({
+      validated: true,
+      valid: result.valid,
+      error: result.userFriendlyError || result.error,
+      sanitized: result.sanitized
+    })
   }
 
   const handleSelectFolder = async () => {
@@ -55,13 +90,39 @@ export function SettingsPanel() {
         <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
           Start URL
         </label>
-        <Input
-          placeholder="https://example.com"
-          value={startUrl}
-          onChange={(e) => handleStartUrlChange(e.target.value)}
-          disabled={isDisabled}
-          className="bg-background"
-        />
+        <div className="relative">
+          <Input
+            placeholder="https://example.com or example.com"
+            value={startUrl}
+            onChange={(e) => handleStartUrlChange(e.target.value)}
+            onBlur={handleUrlBlur}
+            disabled={isDisabled}
+            className={cn(
+              "bg-background pr-10",
+              urlValidation.validated && urlValidation.valid && "border-green-500 focus-visible:ring-green-500",
+              urlValidation.validated && !urlValidation.valid && "border-red-500 focus-visible:ring-red-500"
+            )}
+          />
+          {urlValidation.validated && (
+            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+              {urlValidation.valid ? (
+                <CheckCircle2 className="h-4 w-4 text-green-500" />
+              ) : (
+                <XCircle className="h-4 w-4 text-red-500" />
+              )}
+            </div>
+          )}
+        </div>
+        {urlValidation.validated && urlValidation.valid && urlValidation.sanitized && (
+          <p className="text-xs text-green-600 dark:text-green-400 text-center">
+            Will navigate to: {urlValidation.sanitized}
+          </p>
+        )}
+        {urlValidation.validated && !urlValidation.valid && urlValidation.error && (
+          <p className="text-xs text-red-600 dark:text-red-400">
+            {urlValidation.error}
+          </p>
+        )}
       </div>
 
       <div className="space-y-2">

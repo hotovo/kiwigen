@@ -13,6 +13,13 @@ Complete guide for developing KiwiGen - system architecture, implementation deta
 - [Browser Injection System](#browser-injection-system)
 - [Recording Lifecycle & Data Flow](#recording-lifecycle--data-flow)
 - [Development Workflow](#development-workflow)
+  - [Local Development](#local-development)
+  - [Build Commands](#build-commands)
+  - [Type Checking](#type-checking)
+  - [Testing](#testing)
+  - [Runtime Dependency Preparation](#runtime-dependency-preparation-for-releases)
+  - [Code Signing & Notarization](#code-signing--notarization-macos)
+  - [CI/CD Pipeline](#cicd-pipeline)
 - [Debugging & Logging](#debugging--logging)
 - [Session Output Format](#session-output-format)
 - [File Reference Map](#file-reference-map)
@@ -1641,6 +1648,63 @@ npx tsc --noEmit
 # Check Node.js build scripts
 npx tsc -p tsconfig.node.json
 ```
+
+### Testing
+
+**Run unit tests:**
+```bash
+npm test
+```
+
+**Current test coverage:**
+- URL validation and sanitization (`tests/unit/urlValidation.test.js`)
+  - Tests partial URL sanitization (e.g., `github.com` → `https://github.com`)
+  - Tests TLD requirements (rejects `github`, `.com`, `https://github`)
+  - Tests special cases (localhost, IP addresses)
+  - Tests invalid inputs (consecutive dots, spaces, empty strings)
+
+**Test structure:**
+```
+tests/
+├── unit/               # Unit tests for individual modules
+│   └── urlValidation.test.js  # URL validation logic tests
+├── e2e/                # End-to-end tests (placeholder)
+├── fixtures/           # Test fixtures (placeholder)
+└── helpers/            # Test helper utilities (placeholder)
+```
+
+**Adding new tests:**
+
+1. Create test file in appropriate directory (unit/integration/e2e)
+2. Follow the pattern from existing tests:
+   ```javascript
+   // tests/unit/myFeature.test.js
+   const TEST_CASES = [
+     { input: 'value', shouldPass: true, description: 'Test case' },
+     // ...
+   ]
+   
+   // Run tests and output results
+   TEST_CASES.forEach(test => {
+     const result = functionToTest(test.input)
+     const passed = result === test.expected
+     console.log(passed ? '✓' : '✗', test.description)
+   })
+   ```
+
+3. Update `package.json` scripts if needed:
+   ```json
+   "test:integration": "node tests/integration/myFeature.test.js"
+   ```
+
+4. Run your tests: `npm test` or `node tests/unit/myFeature.test.js`
+
+**Future improvements:**
+- [ ] Add Jest or Vitest test framework
+- [ ] Add E2E tests with Playwright
+- [ ] Add integration tests for IPC handlers
+- [ ] Add CI test execution in GitHub Actions
+- [ ] Add code coverage reporting
 
 ### Runtime Dependency Preparation (for releases)
 

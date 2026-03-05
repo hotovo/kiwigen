@@ -31,8 +31,14 @@ export function registerRecordingHandlers(mainWindow: BrowserWindow | null) {
 
     const urlValidation = validateUrl(startUrl)
     if (!urlValidation.valid) {
+      logger.error(`URL validation failed for input: "${startUrl}"`)
+      logger.error(`Validation error: ${urlValidation.error}`)
       return ipcError(urlValidation.error, 'URL validation failed')
     }
+
+    // Use sanitized URL for recording
+    const sanitizedUrl = urlValidation.sanitized!
+    logger.info(`URL validated and sanitized: "${startUrl}" → "${sanitizedUrl}"`)
 
     const pathValidation = validateOutputPath(outputPath)
     if (!pathValidation.valid) {
@@ -80,7 +86,8 @@ export function registerRecordingHandlers(mainWindow: BrowserWindow | null) {
           }
         })
 
-        await browserRecorder.start(startUrl, screenshotDir)
+        // Use sanitized URL for browser recorder
+        await browserRecorder.start(sanitizedUrl, screenshotDir)
         await transcriber.initialize()
 
         return {}
