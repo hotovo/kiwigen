@@ -1,5 +1,5 @@
 <h1 align="center">
-  <img src="src/assets/kiwi.png" alt="KiwiGen" width="40" height="40" style="vertical-align: middle; margin-right: 10px;">
+  <img src="src/assets/kiwi.png" alt="KiwiGen" width="40" height="40" style="vertical-align: middle; margin-right: 12px; margin-bottom: 4px;">
   KiwiGen
 </h1>
 
