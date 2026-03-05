@@ -1,7 +1,8 @@
-<h1 align="center">
-  <img src="src/assets/kiwi.png" alt="KiwiGen" width="40" height="40" style="vertical-align: middle; margin-right: 12px; margin-bottom: 4px;">
-  KiwiGen
-</h1>
+<p align="center">
+  <img src="src/assets/kiwi.png" alt="KiwiGen" width="60" height="60">
+</p>
+
+<h1 align="center">KiwiGen</h1>
 
 <p align="center">
   <strong>AI-Ready Browser Interaction Recording for Automated Test Generation</strong>

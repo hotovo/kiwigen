@@ -99,7 +99,7 @@ export function getWidgetScript(): () => void {
         }
 
         .dodo-widget.paused {
-          background: rgba(100, 116, 139, 0.15);
+          background: rgba(51, 65, 85, 1);
           border: 2px solid rgba(148, 163, 184, 0.6);
           box-shadow: 0 4px 16px rgba(100, 116, 139, 0.2);
         }
