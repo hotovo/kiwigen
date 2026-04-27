@@ -324,3 +324,34 @@ export function isValidUrl(url: string): boolean {
     return false
   }
 }
+
+/**
+ * Redacts sensitive URL parts before writing URLs into recordings or logs.
+ * Keeps the destination readable while removing query values and fragment contents.
+ */
+export function sanitizeRecordedUrl(url: string): string {
+  try {
+    const parsed = new URL(url)
+
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+      return `${parsed.protocol}[redacted]`
+    }
+
+    const queryKeys = Array.from(parsed.searchParams.keys())
+    parsed.search = ''
+
+    if (queryKeys.length > 0) {
+      parsed.search = queryKeys
+        .map(key => `${encodeURIComponent(key)}=[redacted]`)
+        .join('&')
+    }
+
+    if (parsed.hash) {
+      parsed.hash = '[redacted]'
+    }
+
+    return parsed.toString()
+  } catch {
+    return '[invalid-url]'
+  }
+}

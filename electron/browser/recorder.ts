@@ -9,6 +9,7 @@ import { randomUUID } from 'crypto'
 import { logger } from '../utils/logger'
 import type { RecordedAction } from '../../shared/types'
 import type { KiwiWindow } from '../../shared/browser-context'
+import { sanitizeRecordedUrl } from '../../shared/urlUtils'
 import { getInjectionScript } from './injected-script'
 import { getWidgetScript, getWidgetInitScript } from './recording-widget'
 import { getHighlighterScript, getHighlighterInitScript } from './hover-highlighter'
@@ -90,7 +91,7 @@ export class BrowserRecorder extends EventEmitter {
   private screenshotDir: string | null = null
   private initialNavigationComplete: boolean = false
   private audioActive: boolean = false
-  private lastRecordedUrl: string | null = null
+  private lastObservedUrl: string | null = null
   /** Secure token generated at session start; required by widget IPC calls. */
   private sessionToken: string = ''
 
@@ -174,7 +175,7 @@ export class BrowserRecorder extends EventEmitter {
     this.actions = []
     this.screenshotDir = screenshotDir || null
     this.initialNavigationComplete = false
-    this.lastRecordedUrl = url // Initialize with the start URL to avoid recording it as a navigation
+    this.lastObservedUrl = url // Track raw URLs so dedupe still works when exported URLs are sanitized
     this.pausedDurationMs = 0
     this.pauseStartedAt = null
     // Generate a fresh session token for this recording session
@@ -303,11 +304,11 @@ export class BrowserRecorder extends EventEmitter {
             const currentUrl = frame.url()
             // Only record navigation if the URL is different from the last recorded one
             // This prevents duplicate navigation events for the same URL
-            if (this.lastRecordedUrl !== currentUrl) {
-              this.lastRecordedUrl = currentUrl
+            if (this.lastObservedUrl !== currentUrl) {
+              this.lastObservedUrl = currentUrl
               this.recordAction({
                 type: 'navigate',
-                url: currentUrl,
+                url: sanitizeRecordedUrl(currentUrl),
               })
             }
           }

@@ -82,6 +82,7 @@ session-YYYY-MM-DD-HHMMSS/
 
 - **No Cloud Dependencies**: All transcription happens locally using Whisper.cpp
 - **Your Data Stays Local**: Session bundles remain on your machine
+- **Safer Session Exports**: Recorded URLs redact query/fragment values, and password/token-like form fills are exported as `[REDACTED]`
 
 ---
 

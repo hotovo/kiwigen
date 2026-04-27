@@ -18,6 +18,7 @@ export function getInjectionScript(): () => void {
     // ===== Constants =====
     const INPUT_DEBOUNCE_MS = 1000 // Wait 1 second after last keystroke
     const WIDGET_HOST_ID = '__kiwi-widget-host'
+    const REDACTED_INPUT_VALUE = '[REDACTED]'
 
     // ===== Utility Functions Module =====
     const utils = {
@@ -39,6 +40,25 @@ export function getInjectionScript(): () => void {
 
       truncateText: (text: string, maxLength: number): string =>
         text.slice(0, maxLength),
+
+      redactInputValue: (target: HTMLInputElement | HTMLTextAreaElement): string => {
+        const targetType = target instanceof HTMLInputElement ? target.type.toLowerCase() : 'textarea'
+        const targetHints = [
+          target.name,
+          target.id,
+          target.getAttribute('autocomplete'),
+          target.getAttribute('placeholder'),
+          target.getAttribute('aria-label'),
+        ]
+          .filter((value): value is string => typeof value === 'string' && value.length > 0)
+          .join(' ')
+          .toLowerCase()
+
+        const isSensitiveType = ['password', 'hidden'].includes(targetType)
+        const hasSensitiveHint = /(pass(word|code)?|secret|token|api[-_ ]?key|auth|otp|one[-_ ]?time|2fa|verification|verify|pin|ssn|card(number)?|cvv|cvc)/.test(targetHints)
+
+        return isSensitiveType || hasSensitiveHint ? REDACTED_INPUT_VALUE : target.value
+      },
 
       VALID_ID_PATTERN: /^[a-zA-Z][a-zA-Z0-9_-]*$/,
     }
@@ -316,7 +336,7 @@ export function getInjectionScript(): () => void {
         recordAction(JSON.stringify({
           type: 'fill',
           target: getElementInfo(target),
-          value: target.value,
+          value: utils.redactInputValue(target),
         }))
         inputDebounceMap.delete(target)
       }, INPUT_DEBOUNCE_MS)
@@ -336,7 +356,7 @@ export function getInjectionScript(): () => void {
           recordAction(JSON.stringify({
             type: 'fill',
             target: getElementInfo(target),
-            value: target.value,
+            value: utils.redactInputValue(target),
           }))
         }
         inputDebounceMap.delete(target)

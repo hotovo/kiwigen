@@ -1136,10 +1136,14 @@ interface RecordedAction {
     tagName: string
     boundingBox: { x, y, width, height }
   }
-  value?: string          // For fill, keypress, select actions
+  value?: string          // For fill, keypress, select actions (sensitive fills may be redacted)
   screenshot?: string     // For screenshot actions
 }
 ```
+
+**Export safety notes:**
+- Recorded `fill` values for password- and token-like fields are replaced with `[REDACTED]`
+- Recorded navigation URLs keep the destination but redact query parameter values and fragment contents
 
 **Locator extraction priority:**
 1. `[data-testid="..."]` - Test ID attributes (high confidence)
